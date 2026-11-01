@@ -164,6 +164,8 @@ Die Module entstehen im Repo Situs-Core (`docs/plan.md` dort) und werden hier al
 
 ### 9. Zwei Varianten: VR-Multiplayer und PC-Singleplayer
 
+> Ausgearbeitet in [docs/plan_pc_versionen.md](plan_pc_versionen.md): drei PC-Einstiege (Client mit FPS, Single Player als Host, Server only), Avatar wie VR, Sprung auf Leertaste, Reihenfolge und offene Entscheidungen. Die Punkte hier gelten weiter, sind dort aber konkretisiert.
+
 Entscheidung (2026-10-30): **ein Projekt, ein `main`, zwei Einstiege.** Keine getrennten Branches oder Kopien, damit Bugfixes nicht doppelt nötig sind.
 
 - Gemeinsamer Kern: `simulation_scene.tscn`, `simulation_relay.gd`, `scene_view.gd` und Shader.
