@@ -105,6 +105,8 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 - [ ] **Freeze** auf mehreren Brillen prüfen (Schild, Standbild, Late Join während Freeze).
 - [ ] Neu exportieren: alle Brillen brauchen denselben Stand (RPC-Signatur geändert), alte App `org.matlabcommtest.viewer*` deinstallieren.
 
+- [ ] **PC-Versionen testen** (`docs/plan_pc_versionen.md`): Windows-Export `PC`, Menü, Einzelspieler (Server minimiert, Beenden schließt ihn, MATLAB an 127.0.0.1), PC-Client mit IP-Feld, Sprung auf Leertaste, Freeze auf F, PC-Client und Brille sehen sich. Alles umgesetzt, nichts getestet.
+
 ### 1. PC-Test mit echtem MATLAB
 
 - [x] Server in Godot starten (F5, *Als Server starten*), in MATLAB `udpTest`: Volumen erscheint, Overlay (F3) zeigt Frames.
@@ -172,9 +174,9 @@ Entscheidung (2026-10-30): **ein Projekt, ein `main`, zwei Einstiege.** Keine ge
 - VR-Multiplayer: Hauptszene `main.tscn` von Situs (Server, Brillen, Datenkanal). Aktueller Stand.
 - PC-Singleplayer: neue schlanke Szene `desktop_main.tscn`. Sie startet die Simulationsszene im Modus DIRECT (UDP von MATLAB, Orbit-Kamera, kein Menü, kein Netzwerk).
 
-- [ ] `desktop_main.tscn` anlegen (Start der `simulation_scene` im Modus DIRECT).
-- [ ] Windows-Export-Preset „PC_Solo“ mit eigener Hauptszene über Feature-Override (`application/run/main_scene.pc_solo`). Android bleibt unverändert.
-- [ ] Windows-Export-Vorlagen installieren (siehe `docs/INSTALL.md`) und README um den PC-Start ergänzen.
+- [x] Ersetzt durch den Einzelspieler als zwei Instanzen (siehe `docs/plan_pc_versionen.md`), `desktop_main.tscn` entfällt.
+- [x] Ein Windows-Export-Preset `PC` mit Startmenü statt eigener Hauptszene. Android bleibt unverändert. Ungetestet.
+- [ ] Windows-Export-Vorlagen installieren (siehe `docs/INSTALL.md`). Der PC-Start ist in `docs/INSTALL.md` beschrieben.
 - [ ] Erst bei starker Abweichung (anderer Renderer, kein OpenXR) in ein getrenntes Projekt `godot_pc/` auslagern. Der Kern müsste dann geteilt werden.
 
 ### 10. Umbenennung in Spatial Insights

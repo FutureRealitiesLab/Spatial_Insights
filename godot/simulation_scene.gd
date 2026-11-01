@@ -28,9 +28,10 @@ func _ready() -> void:
 	_on_frozen_changed(SimulationRelay.frozen)
 
 
-## Leertaste (Server und Direkt-Instanz) hält die Simulation für alle an.
+## Taste F (Server und Direkt-Instanz) hält die Simulation für alle an. Die Leertaste ist
+## für den Boost-Sprung der PC-Spieler reserviert.
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
 		SimulationRelay.toggle_frozen()
 
 
@@ -50,7 +51,7 @@ func _build_freeze_ui() -> void:
 	if SimulationRelay.role == SimulationRelay.Role.SERVER or SimulationRelay.role == SimulationRelay.Role.DIRECT:
 		_freeze_button = Button.new()
 		_freeze_button.toggle_mode = true
-		_freeze_button.text = "Freeze (Leertaste)"
+		_freeze_button.text = "Freeze (F)"
 		_freeze_button.focus_mode = Control.FOCUS_NONE
 		_freeze_button.position = Vector2(12.0, 280.0)
 		_freeze_button.toggled.connect(func(on: bool) -> void: SimulationRelay.set_frozen(on))

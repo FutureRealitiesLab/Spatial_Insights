@@ -118,3 +118,16 @@ Die Werte funktionieren auf der Focus Vision (Godot 4.7.2). `godot/export_preset
 | Brille meldet keine Verbindung und versucht `127.0.0.1:7777` | Die APK enthält noch die Standard-IP. *Project Settings → Situs Core → Network → Server Ip* auf die LAN-IP des Server-PCs setzen (`ipconfig`), APK neu exportieren und installieren |
 | Export bricht ab | Meist fehlt ein Teil: Export-Vorlagen, *Android SDK Path*, *Java SDK Path*, Build-Vorlage (`godot/android/`) oder `godot/addons/godotopenxrvendors` |
 | `OpenXR was requested but failed to start` | Kein Headset am PC. Mit *Startup Alert* aus erscheint der Dialog nicht mehr |
+
+## PC-Version (Windows) exportieren
+
+Ein Export mit Startmenü (Spieler, Einzelspieler, Server). Voraussetzung: Windows-Export-Vorlagen installiert (*Editor → Export-Vorlagen verwalten*).
+
+```bash
+Godot --headless --path godot --export-release "PC" build/spatial_insights_pc.exe
+```
+
+- OpenXR ist am PC per Feature-Override ausgeschaltet, die App startet auch bei laufendem SteamVR im Menü.
+- Firewall: UDP 7777 (Server, Brillen und PC-Clients) und UDP 4242 (MATLAB sendet an den Server-PC). Beim Einzelspieler (nur lokal) muss MATLAB an `127.0.0.1` senden, mit Häkchen *Für andere im LAN öffnen* an die LAN-IP.
+- Startparameter überspringen das Menü: `spatial_insights_pc.exe -- --server`, `-- --client=192.168.0.10`, `-- --solo`.
+- Tasten: Leertaste Boost-Sprung (Spieler), F Freeze (Server), F3 Overlay, C Colormap.

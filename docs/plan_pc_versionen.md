@@ -1,6 +1,6 @@
 # Plan: PC-Versionen (Client, Single Player, Server)
 
-Stand 2026-11-01. Zielbild: eine Windows-App mit drei Einstiegen. Der Avatar ist überall derselbe wie beim VR-Client (`avatar_dynamic_cone`), Sprung auf der Leertaste.
+Stand 2026-11-01. **Umgesetzt, noch nicht getestet** (siehe Test-Block 0 in `plan.md`). Zielbild: eine Windows-App mit drei Einstiegen. Der Avatar ist überall derselbe wie beim VR-Client (`avatar_dynamic_cone`), Sprung auf der Leertaste.
 
 ## Die drei Varianten
 

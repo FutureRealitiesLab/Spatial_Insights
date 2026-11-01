@@ -56,5 +56,6 @@ network/server_ip="192.168.50.172"
 [xr]
 
 openxr/enabled=true
+openxr/enabled.pc=false
 openxr/startup_alert=false
 shaders/enabled=true

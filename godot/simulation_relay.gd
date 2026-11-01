@@ -118,6 +118,8 @@ func _start_udp() -> void:
 	_receiver = UdpReceiver.new()
 	port = int(ProjectSettings.get_setting("sim/udp_port", 4242))
 	_receiver.port = port
+	if GameState.local_only:
+		_receiver.bind_address = "127.0.0.1"   # Einzelspieler: MATLAB muss an 127.0.0.1 senden
 	add_child(_receiver)
 	_receiver.frame_received.connect(_on_udp_frame)
 

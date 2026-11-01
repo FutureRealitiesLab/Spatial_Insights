@@ -5,6 +5,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Der Branch
 ## [Unreleased]
 
 ### Hinzugefügt
+- PC-Versionen (Details: `docs/plan_pc_versionen.md`): Windows-Export-Preset `PC` (eine Exe mit Startmenü), OpenXR am PC per Feature-Override aus (`openxr/enabled.pc=false`), Einzelspieler als zweite, minimierte Server-Instanz, MATLAB-Empfang beim lokalen Server nur an 127.0.0.1. Freeze liegt jetzt auf der Taste **F** (die Leertaste ist der Boost-Sprung der PC-Spieler).
 - Freeze: Leertaste oder Button am Server hält die Simulation für alle Brillen an (`SimulationRelay.set_frozen()`, RPC, Anzeige „EINGEFROREN“).
 - Situs Core 1.1.0 als Plugin (`godot/addons/situs_core/`, git subtree von `dist`). Hauptszene ist `main.tscn` des Plugins, die Simulation ist die Standardszene (`situs_core/default_scene`).
 - Datenkanal `godot/modul_data_channel/`: ENet-Transferkanal 1, Ack-Flusskontrolle je Client, neuester Frame gewinnt, Late-Join-Cache, optional zstd.
