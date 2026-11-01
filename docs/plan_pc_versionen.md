@@ -7,7 +7,7 @@ Stand 2026-11-01. Zielbild: eine Windows-App mit drei Einstiegen. Der Avatar ist
 | | Was | Heute | Fehlt |
 |---|---|---|---|
 | **PC-Client (FPS)** | Tritt einem Server im LAN bei, läuft mit WASD und Maus, sieht Daten und die anderen Avatare | Menü *Als Spieler starten* (`fps_player.gd`), Avatar wie VR, eigener Körper sichtbar | Sprung auf Leertaste ist noch ein Physiksprung, kein Boost-Sprung. IP nur aus den Project Settings, kein Eingabefeld. Kein Windows-Export. |
-| **Single Player (Host)** | Server und Spieler in einer Instanz, andere können optional beitreten | Gibt es nicht. Der Server ist reiner Relay-Server ohne Spieler und ohne Avatar. | Host-Modus (siehe unten), Menüeintrag, Freeze-Taste |
+| **Single Player** | Server und Spieler lokal, beides als zwei Instanzen derselben Exe (Server localhost, Client localhost) | Menü hat *Server* und *Spieler lokal*, aber keinen Einstieg, der beides startet | Menüeintrag *Einzelspieler*, Prozess starten und beenden |
 | **Server only** | Server ohne Spieleransicht, Orbit-Kamera auf die Daten, Avatare der Clients sichtbar | Menü *Als Server starten* mit Orbit-Kamera und HUD | Nur Feinschliff: Windows-Export, Startparameter |
 
 ## Was für die Umsetzung gebraucht wird
@@ -19,34 +19,37 @@ Stand 2026-11-01. Zielbild: eine Windows-App mit drei Einstiegen. Der Avatar ist
 - Die Körpererkennung (Hocke, Hochspringen) und die B-Taste bleiben dem XR-Spieler vorbehalten.
 - Auswirkung auf die anderen: keine, die Ringsäule streckt sich schon heute von Boden bis Kopf.
 
-### B. Host-Modus: Server mit eigenem Spieler (Situs-Core), größter Posten
+### B. Einzelspieler als zwei Instanzen (Entscheidung 2026-11-01)
 
-Problem: Der Server hat Peer-ID 1 und spielt nicht mit. Spieler-IDs, Farben und Positionsweitergabe gehen von Clients aus.
+Statt den Server um einen eigenen Spieler zu erweitern (Host-Modus), startet der Einzelspieler zwei Instanzen derselben Exe: Server auf localhost und Client auf localhost. Das Menü hat *Server* und *Spieler lokal* schon, es fehlt nur ein Button *Einzelspieler*, der beides zusammen startet:
 
-Vorschlag: `GameState.mode` bleibt `SERVER`, dazu ein Flag `host_player` (statt eines vierten Modus, denn rund 15 Stellen prüfen auf `SERVER` und sollen es weiter tun). Änderungen:
+1. Menüeintrag *Einzelspieler* (oder `--solo`).
+2. Zweiter Prozess im Servermodus: `OS.create_process(OS.get_executable_path(), ["--server"])`.
+3. Nach ca. 1 s (Server lauscht) verbindet sich die erste Instanz als Client mit 127.0.0.1 und startet den FPS-Spieler.
+4. Beim Beenden des Spieler-Fensters wird der Server-Prozess mitbeendet (Prozess-ID merken).
 
-- `NetworkManager`: Der Server meldet beitretenden Clients die ID 1 als Spieler (`_notify_player_joined`, Farbe für ID 1) und gibt dem Host-Spieler einen Sendeweg (`send_player_state` verteilt direkt per `_client_receive_state` an alle Peers, ohne Umweg). `my_id` des Hosts ist 1.
-- `SceneManager`: Ort, an dem bisher `mode != SERVER` über lokalen Spieler und Eigenavatar entscheidet (`_spawn_local_player`, `start()`, `_load_scene_local`, `on_team_scene_ready`), muss den Host-Spieler zulassen. Statt der ServerCamera zählt dann die FPS-Kamera.
-- `main.gd` und `main.tscn`: Menüeintrag *Einzelspieler (Server + Spieler)*. Der Host öffnet den Port 7777 (andere dürfen beitreten).
-- `SimulationRelay` (Spatial Insights): braucht nichts. Die Rolle ist Server, Daten werden lokal angezeigt und an Clients verteilt.
-- Optionaler Übersichtsmodus: Taste, die zwischen FPS-Ansicht und Orbit-Kamera umschaltet.
+Das Serverfenster ist das Bedienfeld (Freeze, Szene weiter, Orbit-Übersicht, Status). Andere können dem Einzelspieler beitreten, weil der Server auf 7777 lauscht.
+
+Der Host-Modus (ein Fenster, Server mit eigenem Spieler, Peer-ID 1 als Spieler, `GameState.host_player`, Änderungen in `NetworkManager`, `SceneManager`, `main.gd`) bleibt als spätere Option und wird erst gebaut, wenn zwei Fenster stören.
 
 ### C. Freeze-Taste verschieben (Spatial Insights), klein
 
 Freeze liegt heute auf der Leertaste (nur Server). Weil die Leertaste im Host-Modus springt, wechselt Freeze auf `F`. Der Button am Server bleibt.
 
-### D. PC-Client verbessern, klein bis mittel
+### D. Menü: IP-Feld, Button Lokal, Einzelspieler (Spatial Insights), klein bis mittel
 
-- Eingabefeld für die Server-IP im Menü, zuletzt benutzten Wert in `user://` merken (bisher nur Project Setting).
-- Später: automatische Server-Suche im LAN (Todo in Situs Core), dann entfällt das Feld als Standard.
-- Anzeige im Spiel: Verbindungsstatus ist über `NetInfoBoard` und `NetDiag` schon da.
+- Eingabefeld für die Server-IP, zuletzt benutzten Wert in `user://` merken.
+- Button *Lokal* (setzt 127.0.0.1), Button *Verbinden*.
+- Button *Einzelspieler* (siehe B).
+- Später: automatische Server-Suche im LAN (Todo in Situs Core), dann ist das Feld nur noch die Alternative.
 
-### E. Windows-Export und Startparameter, mittel
+### E. Ein Windows-Export mit Startmenü, mittel
 
-- Export-Preset *Windows* mit einer Exe und dem Menü als Standard. Windows-Export-Vorlagen installieren (siehe `docs/INSTALL.md`, Punkt steht schon im Plan).
-- Startparameter zum Überspringen des Menüs: `--server`, `--host`, `--client=<IP>` (über `OS.get_cmdline_user_args()`), damit z. B. der Server-PC per Verknüpfung direkt startet.
-- **XR am PC abschalten:** Das Projekt hat `openxr/enabled=true`. Läuft am PC SteamVR oder ein anderes OpenXR-Runtime, könnte die App unerwartet in den XR-Modus gehen. Dafür im PC-Preset `xr/openxr/enabled` per Feature-Override auf aus setzen (oder Startparameter `--xr-mode off`).
-- Rendering: Compatibility-Renderer reicht, VRS wird am PC schon in `main.gd` abgeschaltet.
+- Das Startmenü gibt es schon (`main.tscn`, erscheint ohne Headset). Es fehlt der **Windows-Export**: Preset *Windows* mit dem Menü als Start. Windows-Export-Vorlagen installieren (`docs/INSTALL.md`).
+- Startparameter zum Überspringen des Menüs (optional): `--server`, `--client=<IP>`, `--solo`.
+- **XR am PC abschalten:** Das Projekt hat `openxr/enabled=true`. Läuft am PC SteamVR, könnte die App unerwartet in den XR-Modus gehen. Im PC-Preset `xr/openxr/enabled` per Feature-Override ausschalten (oder `--xr-mode off`).
+- Rendering: Compatibility, VRS wird am PC in `main.gd` abgeschaltet.
+- Firewall: UDP 7777 (Server) und UDP 4242 (MATLAB).
 
 ### F. Avatar-Gleichheit, bereits erfüllt, kleine Lücken
 
@@ -56,15 +59,24 @@ Freeze liegt heute auf der Leertaste (nur Server). Weil die Leertaste im Host-Mo
 
 ## Reihenfolge
 
-1. A: Boost-Sprung auf Leertaste (kleine Änderung, sofort testbar zusammen mit VR-Clients).
+1. A: Boost-Sprung auf Leertaste (ohne Blickrichtung, nur Kopfhöhe).
 2. C: Freeze auf `F`.
-3. D + E: IP-Feld, Startparameter, Windows-Export, XR am PC aus. Damit sind PC-Client und Server-only fertig.
-4. B: Host-Modus (größter Eingriff, eigene Testrunde mit einer Brille).
+3. D + E: Menü (IP-Feld, Lokal, Einzelspieler), Startparameter, Windows-Export, XR am PC aus. Damit sind alle drei Varianten nutzbar.
+4. Test mit einer Brille: PC-Client und Brille sehen sich, Sprung, Freeze.
+5. Später und nur bei Bedarf: Host-Modus in einem Fenster.
 
-## Offene Entscheidungen
+## Entschieden (2026-11-01)
 
-1. Freeze auf `F` ok?
-2. Soll der Single Player den Port 7777 öffnen (andere können beitreten) oder rein lokal laufen?
-3. Soll der Host zwischen FPS-Ansicht und Orbit-Übersicht umschalten können?
-4. Augenhöhe der FPS-Spieler fest 1,6 m oder einstellbar?
-5. Test: nächste Session zusammen mit Boost-Sprung und Freeze auf den Brillen.
+- Sprung nur auf Leertaste, ohne extra nach oben zu schauen.
+- Einzelspieler als zwei Instanzen (Server localhost, Client localhost).
+- Freeze auf `F`.
+- IP-Feld mit Button *Lokal*.
+- Ein Windows-Export mit Startmenü (das Menü existiert schon).
+
+## Offen
+
+1. Augenhöhe der FPS-Spieler fest 1,6 m oder einstellbar?
+2. Serverfenster beim Einzelspieler sichtbar oder minimiert?
+3. Port 7777 beim Einzelspieler für andere offen (so voreingestellt) oder abschaltbar?
+
+Ausführliche Logik mit Ablauf je Variante: Notion-Unterseite *PC features* unter *Spatial Insights*.
