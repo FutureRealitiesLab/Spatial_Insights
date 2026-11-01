@@ -73,10 +73,10 @@ Freeze liegt heute auf der Leertaste (nur Server). Weil die Leertaste im Host-Mo
 - IP-Feld mit Button *Lokal*.
 - Ein Windows-Export mit Startmenü (das Menü existiert schon).
 
-## Offen
+## Entschieden, Teil 2 (2026-11-01)
 
-1. Augenhöhe der FPS-Spieler fest 1,6 m oder einstellbar?
-2. Serverfenster beim Einzelspieler sichtbar oder minimiert?
-3. Port 7777 beim Einzelspieler für andere offen (so voreingestellt) oder abschaltbar?
+- Augenhöhe der FPS-Spieler fest 1,6 m.
+- Serverfenster beim Einzelspieler startet minimiert.
+- Netzwerk beim Einzelspieler: standardmäßig nur lokal (Server bindet an 127.0.0.1, auch der MATLAB-UDP-Empfang), im Menü ein Häkchen *Für andere im LAN öffnen* (z. B. um mit einer Brille vom eigenen PC aus zu testen). Umsetzung: `NetworkManager.start_server()` mit Bind-Adresse (`set_bind_ip`), `udp_receiver.gd` hat `bind_address` schon. Begründung: keine Windows-Firewall-Nachfrage im Normalfall, keine versehentlich beitretenden Geräte im Hochschulnetz, kein Konflikt mit einem laufenden Server-PC.
 
 Ausführliche Logik mit Ablauf je Variante: Notion-Unterseite *PC features* unter *Spatial Insights*.
