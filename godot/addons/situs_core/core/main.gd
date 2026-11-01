@@ -29,6 +29,12 @@ var _vr_fade_plane: MeshInstance3D = null
 var _vr_plane_mat:  StandardMaterial3D = null
 var _vr_fade_label: Label3D = null
 
+## Gespeicherte Server-IP des PC-Clients
+const CLIENT_CFG := "user://situs_client.cfg"
+
+## Prozess-ID des Server-Prozesses, den der Einzelspieler gestartet hat (-1 = keiner)
+var _server_pid: int = -1
+
 ## Netzwerk-Diagnose
 const DIAG_UPDATE_INTERVAL: float = 1.0
 var _diag_timer: float = 0.0
@@ -66,7 +72,8 @@ func _ready() -> void:
 		# schwarzem Bildschirm, weil die VRS-Textur vom XR-Compositor fehlt.
 		get_viewport().vrs_mode = Viewport.VRS_DISABLED
 		$Menu.visible = true
-		$Menu/Center/VBox/BtnFPS.text = "Als Spieler starten (LAN: %s)" % NetworkManager.server_ip
+		$Menu/Center/VBox/IpEdit.text = _load_saved_ip()
+		call_deferred("_handle_cmdline")
 
 
 func _launch() -> void:
@@ -79,10 +86,13 @@ func _launch() -> void:
 			if "." in addr and not addr.begins_with("127.") and not addr.begins_with("169.254."):
 				addrs.append(addr)
 		var lines: PackedStringArray = ["Port %d  –  Lausche auf:" % NetworkManager.PORT]
-		for addr in addrs:
-			lines.append("  %s" % addr)
-		if addrs.is_empty():
-			lines.append("  (keine Netzwerkverbindung?)")
+		if GameState.local_only:
+			lines.append("  127.0.0.1 (nur dieser PC)")
+		else:
+			for addr in addrs:
+				lines.append("  %s" % addr)
+			if addrs.is_empty():
+				lines.append("  (keine Netzwerkverbindung?)")
 		$ServerHUD/Panel/VBox/NetworkLabel.text = "\n".join(lines)
 
 	# Optionales Modul modul_scene_loop (Autoload "SceneLoop"): Timer, Auto-Wechsel, Next-Button
@@ -103,9 +113,11 @@ func _launch() -> void:
 # ── Menü-Buttons ────────────────────────────────────────────────
 
 func _on_btn_fps_pressed() -> void:
-	GameState.mode = GameState.Mode.FPS
-	NetworkManager.start_client()
-	_launch()
+	var ip: String = $Menu/Center/VBox/IpEdit.text.strip_edges()
+	if ip.is_empty():
+		ip = NetworkManager.server_ip
+	_save_ip(ip)
+	_start_pc_client(ip)
 
 
 func _on_btn_fps_local_pressed() -> void:
@@ -114,7 +126,84 @@ func _on_btn_fps_local_pressed() -> void:
 	_launch()
 
 
+## Einzelspieler: startet denselben Programmcode als Server in einem zweiten, minimierten
+## Prozess und verbindet sich dann als Spieler mit 127.0.0.1. Standardmäßig nur lokal,
+## mit dem Häkchen im Menü (oder --lan) auch für Brillen und andere PCs im LAN.
+func _on_btn_solo_pressed() -> void:
+	var lan: bool = $Menu/Center/VBox/CheckLan.button_pressed or "--lan" in OS.get_cmdline_user_args()
+	var args := PackedStringArray()
+	if OS.has_feature("editor"):
+		args.append_array(["--path", ProjectSettings.globalize_path("res://")])
+	args.append("--minimized")
+	args.append("--")   # ab hier Parameter für das Programm
+	args.append("--server")
+	if not lan:
+		args.append("--local")
+	_server_pid = OS.create_process(OS.get_executable_path(), args)
+	if _server_pid <= 0:
+		push_error("[Main] Server-Prozess konnte nicht gestartet werden.")
+		_server_pid = -1
+		return
+	print("[Main] Einzelspieler: Server-Prozess %d gestartet (%s)" % [_server_pid, "LAN" if lan else "nur lokal"])
+	$Menu.visible = false
+	await get_tree().create_timer(1.0).timeout   # der Server soll lauschen, bevor wir verbinden
+	_start_pc_client("127.0.0.1")
+
+
+func _start_pc_client(ip: String) -> void:
+	GameState.mode = GameState.Mode.FPS
+	NetworkManager.start_client(ip)
+	_launch()
+
+
+## Startparameter nach "--": --server [--local], --client=<IP>, --solo [--lan].
+## Ohne Parameter bleibt das Menü stehen.
+func _handle_cmdline() -> void:
+	var args := OS.get_cmdline_user_args()
+	if "--server" in args:
+		GameState.local_only = "--local" in args
+		_on_btn_server_pressed_keep_flag()
+		return
+	if "--solo" in args:
+		_on_btn_solo_pressed()
+		return
+	for a: String in args:
+		if a.begins_with("--client="):
+			_start_pc_client(a.substr("--client=".length()))
+			return
+
+
+func _load_saved_ip() -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load(CLIENT_CFG) == OK:
+		return str(cfg.get_value("client", "server_ip", NetworkManager.server_ip))
+	return NetworkManager.server_ip
+
+
+func _save_ip(ip: String) -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("client", "server_ip", ip)
+	cfg.save(CLIENT_CFG)
+
+
+## Beendet den vom Einzelspieler gestarteten Server-Prozess.
+func _stop_server_process() -> void:
+	if _server_pid > 0:
+		OS.kill(_server_pid)
+		_server_pid = -1
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_EXIT_TREE:
+		_stop_server_process()
+
+
 func _on_btn_server_pressed() -> void:
+	GameState.local_only = false   # Server über das Menü ist für das LAN offen
+	_on_btn_server_pressed_keep_flag()
+
+
+func _on_btn_server_pressed_keep_flag() -> void:
 	GameState.mode = GameState.Mode.SERVER
 	NetworkManager.start_server()
 	_launch()

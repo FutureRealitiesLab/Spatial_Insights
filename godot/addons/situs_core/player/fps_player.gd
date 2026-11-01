@@ -3,19 +3,22 @@ extends CharacterBody3D
 
 ## fps_player.gd – Desktop-Fallback für Tests ohne Headset.
 ##
-## Steuerung: WASD bewegen, Maus für Umsehen, Leertaste springen, ESC Maus freigeben.
+## Steuerung: WASD bewegen, Maus für Umsehen, Leertaste = Boost-Sprung (wie bei der Brille:
+## nur der Kopf hebt ab, der Körper bleibt am Boden), ESC Maus freigeben.
 ## Gleiche Netzwerk-Logik wie xr_player.gd – beide senden via NetworkManager.send_player_state().
 
 
 @export var SPEED: float        = 1.2
-@export var JUMP_VELOCITY: float = 4.5
 @export var MOUSE_SENSITIVITY: float = 0.003
 const SEND_RATE: float    = 0.05
 
 @onready var head: Node3D   = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 
+const JumpBoost := preload("res://addons/situs_core/player/jump_boost.gd")
+
 var _send_timer: float = 0.0
+var _boost := JumpBoost.new()   # Höhenverlauf des Boost-Sprungs
 
 
 func _ready() -> void:
@@ -43,6 +46,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# Q / E → Szene wechseln (aktiviert Standalone-Modus falls nötig)
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			_boost.start()
 		if event.keycode == KEY_Q or event.keycode == KEY_E:
 			if not SceneManager.standalone_mode:
 				SceneManager.activate_standalone()
@@ -52,14 +57,21 @@ func _unhandled_input(event: InputEvent) -> void:
 				SceneManager.retreat_scene()
 
 
+## Höhe des echten Bodens. Der Körper des Avatars bleibt hier, auch wenn der Kopf beim
+## Sprung oben ist.
+func get_floor_y() -> float:
+	return global_position.y
+
+
+func _process(delta: float) -> void:
+	# Boost-Sprung: nur der Kopf (Kamera) hebt ab
+	head.position.y += _boost.step(delta)
+
+
 func _physics_process(delta: float) -> void:
 	# Gravitation
 	if not is_on_floor():
 		velocity += get_gravity() * delta
-
-	# Sprung (Leertaste = ui_accept)
-	if Input.is_action_just_pressed("ui_accept") and is_on_floor():
-		velocity.y = JUMP_VELOCITY
 
 	# WASD-Bewegung (ui_left/right/up/down = A/D/W/S per Default)
 	var input_dir: Vector2 = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")

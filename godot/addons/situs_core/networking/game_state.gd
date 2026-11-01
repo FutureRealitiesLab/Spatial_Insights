@@ -12,6 +12,9 @@ enum Mode { XR, FPS, SERVER }
 ## Aktueller Startmodus dieser Instanz
 var mode: Mode = Mode.FPS
 
+## true = Server und MATLAB-Empfang binden nur an 127.0.0.1 (Einzelspieler am PC)
+var local_only: bool = false
+
 ## Eigene Peer-ID (wird nach Verbindung gesetzt)
 var my_id: int = 0
 

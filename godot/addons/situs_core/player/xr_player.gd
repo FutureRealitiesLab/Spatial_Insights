@@ -11,6 +11,7 @@ extends XROrigin3D
 
 
 const SitusSettings := preload("res://addons/situs_core/core/situs_settings.gd")
+const JumpBoost := preload("res://addons/situs_core/player/jump_boost.gd")
 
 ## Sendeintervall in Sekunden (20 Hz)
 const SEND_RATE: float = 0.05
@@ -42,9 +43,7 @@ var _flash_t: Array = [0.0, 0.0]             # verbleibende Blitzzeit links, rec
 var _flash_on: Array = [false, false]
 var _hint: Label3D = null
 var _hint_time: float = 0.0
-var _boost_phase: int = 0          # 0 = am Boden, 1 = Aufstieg, 2 = Gleiten
-var _boost_time: float = 0.0
-var _boost_applied: float = 0.0    # aktuell auf den Ursprung addierte Höhe (Meter)
+var _boost := JumpBoost.new()      # Höhenverlauf des Boost-Sprungs
 var _jump_baseline: float = -1.0   # normale Kopfhöhe (langsam nachgeführt)
 var _jump_prev_h: float = 0.0
 var _jump_vy: float = 0.0
@@ -122,43 +121,19 @@ func _show_hint(text: String) -> void:
 
 ## Startet den Boost-Sprung. Ignoriert, wenn abgeschaltet oder der Spieler noch fliegt.
 func start_boost() -> void:
-	if not SitusSettings.get_jump_enabled() or _boost_phase != 0:
-		return
-	_boost_phase = 1
-	_boost_time = 0.0
-	_jump_cool = jump_cooldown
+	if _boost.start():
+		_jump_cool = jump_cooldown
 
 
 ## Höhe des echten Bodens (ohne Sprung). Der Körper des Avatars bleibt hier, auch wenn
 ## der Kopf beim Sprung oben ist (Kollisionsschutz für die anderen im Raum).
 func get_floor_y() -> float:
-	return global_position.y - _boost_applied
+	return global_position.y - _boost.offset
 
 
 ## Hebt den XR-Ursprung an und lässt ihn wieder herabgleiten.
 func _update_boost(delta: float) -> void:
-	var height := SitusSettings.get_jump_height()
-	var offset := 0.0
-	if _boost_phase == 1:
-		_boost_time += delta
-		var x := clampf(_boost_time / maxf(SitusSettings.get_jump_rise(), 0.05), 0.0, 1.0)
-		# Wie ein Wurf: am Anfang schnell, nach oben läuft die Sprungenergie aus (Geschwindigkeit
-		# nimmt gleichmäßig bis 0 am höchsten Punkt ab)
-		offset = height * (1.0 - (1.0 - x) * (1.0 - x))
-		if x >= 1.0:
-			_boost_phase = 2
-			_boost_time = 0.0
-	elif _boost_phase == 2:
-		_boost_time += delta
-		var x := clampf(_boost_time / maxf(SitusSettings.get_jump_glide(), 0.5), 0.0, 1.0)
-		# Beginnt ohne Ruck aus dem höchsten Punkt, sinkt langsam und kommt sanft an
-		offset = height * (1.0 + cos(PI * x)) / 2.0
-		if x >= 1.0:
-			_boost_phase = 0
-			offset = 0.0
-	if offset != _boost_applied:
-		global_position.y += offset - _boost_applied
-		_boost_applied = offset
+	global_position.y += _boost.step(delta)
 
 
 func _on_left_stick(_action: String, value: Vector2) -> void:
