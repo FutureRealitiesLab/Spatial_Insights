@@ -68,6 +68,8 @@ func _process(delta: float) -> void:
 
 func start_server() -> void:
 	_peer = ENetMultiplayerPeer.new()
+	if GameState.local_only:
+		_peer.set_bind_ip("127.0.0.1")   # Einzelspieler: nur dieser PC
 	var err: int = _peer.create_server(PORT, MAX_CLIENTS)
 	if err != OK:
 		push_error("[NetworkManager] Server konnte nicht gestartet werden (Error %d)" % err)
@@ -75,7 +77,7 @@ func start_server() -> void:
 	multiplayer.multiplayer_peer = _peer
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	print("[NetworkManager] Server läuft auf Port %d" % PORT)
+	print("[NetworkManager] Server läuft auf Port %d%s" % [PORT, " (nur lokal)" if GameState.local_only else ""])
 
 
 func start_client(target_ip: String = "") -> void:

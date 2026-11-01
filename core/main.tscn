@@ -48,15 +48,36 @@ horizontal_alignment = 1
 [node name="HSep" type="HSeparator" parent="Menu/Center/VBox" unique_id=825257186]
 layout_mode = 2
 
+[node name="IpEdit" type="LineEdit" parent="Menu/Center/VBox"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+placeholder_text = "Server-IP (z. B. 192.168.0.10)"
+alignment = 1
+
 [node name="BtnFPS" type="Button" parent="Menu/Center/VBox" unique_id=163488456]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "Als Spieler starten (LAN)"
+text = "Als Spieler verbinden"
 
 [node name="BtnFPSLocal" type="Button" parent="Menu/Center/VBox" unique_id=163488457]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "Als Spieler starten (Lokal / 127.0.0.1)"
+text = "Als Spieler lokal (127.0.0.1)"
+
+[node name="HSep2" type="HSeparator" parent="Menu/Center/VBox"]
+layout_mode = 2
+
+[node name="BtnSolo" type="Button" parent="Menu/Center/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Einzelspieler (Server + Spieler auf diesem PC)"
+
+[node name="CheckLan" type="CheckBox" parent="Menu/Center/VBox"]
+layout_mode = 2
+text = "Für andere im LAN öffnen (Brillen, weitere PCs)"
+
+[node name="HSep3" type="HSeparator" parent="Menu/Center/VBox"]
+layout_mode = 2
 
 [node name="BtnServer" type="Button" parent="Menu/Center/VBox" unique_id=1053973096]
 custom_minimum_size = Vector2(0, 48)
@@ -166,6 +187,7 @@ transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 3.6, 
 
 [connection signal="pressed" from="Menu/Center/VBox/BtnFPS" to="." method="_on_btn_fps_pressed"]
 [connection signal="pressed" from="Menu/Center/VBox/BtnFPSLocal" to="." method="_on_btn_fps_local_pressed"]
+[connection signal="pressed" from="Menu/Center/VBox/BtnSolo" to="." method="_on_btn_solo_pressed"]
 [connection signal="pressed" from="Menu/Center/VBox/BtnServer" to="." method="_on_btn_server_pressed"]
 [connection signal="pressed" from="ServerHUD/Panel/VBox/BtnNext" to="." method="_on_btn_next_pressed"]
 [connection signal="pressed" from="ServerHUD/Panel/VBox/BtnToggleAuto" to="." method="_on_btn_toggle_auto_pressed"]
