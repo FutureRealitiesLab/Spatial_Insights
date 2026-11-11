@@ -73,7 +73,17 @@ func _ready() -> void:
 		get_viewport().vrs_mode = Viewport.VRS_DISABLED
 		$Menu.visible = true
 		$Menu/Center/VBox/IpEdit.text = _load_saved_ip()
+		$Menu/Center/VBox/IpEdit.text_changed.connect(_update_connect_label)
+		_update_connect_label()
 		call_deferred("_handle_cmdline")
+
+
+## Beschriftung des Verbinden-Buttons zeigt die eingetragene Server-IP.
+func _update_connect_label(_text: String = "") -> void:
+	var ip: String = $Menu/Center/VBox/IpEdit.text.strip_edges()
+	if ip.is_empty():
+		ip = NetworkManager.server_ip
+	$Menu/Center/VBox/BtnFPS.text = "Client mit Verbindung zu %s" % ip
 
 
 func _launch() -> void:
