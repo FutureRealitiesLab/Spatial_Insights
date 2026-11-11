@@ -39,6 +39,10 @@ var _server_pid: int = -1
 const DIAG_UPDATE_INTERVAL: float = 1.0
 var _diag_timer: float = 0.0
 
+## Server-HUD (oben rechts): Port und Adressen als feste Zeilen, darunter die Client-Liste.
+var _hud_base_lines: PackedStringArray = []
+var _hud_timer: float = 0.0
+
 
 func _ready() -> void:
 	# Spielfläche aus den Project Settings (Mesh ist 1 x 1 m, Größe über scale)
@@ -103,7 +107,8 @@ func _launch() -> void:
 				lines.append("  %s" % addr)
 			if addrs.is_empty():
 				lines.append("  (keine Netzwerkverbindung?)")
-		$ServerHUD/Panel/VBox/NetworkLabel.text = "\n".join(lines)
+		_hud_base_lines = lines
+		_update_server_hud()
 
 	# Optionales Modul modul_scene_loop (Autoload "SceneLoop"): Timer, Auto-Wechsel, Next-Button
 	_scene_loop = get_node_or_null("/root/SceneLoop")
@@ -277,7 +282,34 @@ func _unhandled_input(event: InputEvent) -> void:
 		_diag_timer = DIAG_UPDATE_INTERVAL
 
 
+## Server-HUD: Port und Adressen, darunter alle verbundenen Clients mit ID, Spielerfarbe,
+## RTT, Paketverlust und IP. Die Werte liefert ENet ohne zusätzlichen Datenverkehr.
+func _update_server_hud() -> void:
+	var lines: PackedStringArray = _hud_base_lines.duplicate()
+	var peers: PackedInt32Array = multiplayer.get_peers() if multiplayer.has_multiplayer_peer() else PackedInt32Array()
+	lines.append("")
+	lines.append("Clients: %d" % peers.size())
+	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	for pid: int in peers:
+		var hex: String = "#%s" % GameState.get_color_for_id(pid).to_html(false).to_upper()
+		var info := "  #%d  %s" % [pid, hex]
+		var peer: ENetPacketPeer = enet.get_peer(pid) if enet != null else null
+		if peer != null:
+			var loss: float = peer.get_statistic(ENetPacketPeer.PEER_PACKET_LOSS) / 65536.0 * 100.0
+			info += "  %d ms  %.1f %%  %s" % [
+				int(peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME)), loss, peer.get_remote_address()]
+		lines.append(info)
+	$ServerHUD/Panel/VBox/NetworkLabel.text = "\n".join(lines)
+
+
 func _process(delta: float) -> void:
+	# Server-HUD einmal pro Sekunde aktualisieren (Clients kommen und gehen).
+	if GameState.mode == GameState.Mode.SERVER and $ServerHUD.visible:
+		_hud_timer += delta
+		if _hud_timer >= 1.0:
+			_hud_timer = 0.0
+			_update_server_hud()
+
 	# ── VR-Fade-Overlay der Kamera nachführen ──────────────────────
 	if GameState.mode == GameState.Mode.XR and is_instance_valid(_vr_fade_plane):
 		if _vr_fade_plane.visible or (is_instance_valid(_vr_fade_label) and _vr_fade_label.visible):
