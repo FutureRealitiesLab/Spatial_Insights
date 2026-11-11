@@ -37,6 +37,8 @@ const BoxOutline := preload("res://box_outline.gd")
 @export var floor_outline_path: NodePath
 ## 0 rainbow, 1 hot, 2 gray, 3 viridis (Taste C wechselt).
 @export var colormap: int = 0
+## false: Taste C wird hier nicht ausgewertet (die Szene steuert die Farbskala).
+@export var handle_keys: bool = true
 
 const COLORMAP_NAMES := ["rainbow", "hot", "gray", "viridis"]
 ## MATLAB lines(9): die ersten sieben Farben, danach wiederholt.
@@ -69,11 +71,16 @@ func _ready() -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_C:
-		colormap = (colormap + 1) % COLORMAP_NAMES.size()
-		for layer: Dictionary in layers.values():
-			for mat: ShaderMaterial in layer.mats:
-				mat.set_shader_parameter("colormap", colormap)
+	if handle_keys and event is InputEventKey and event.pressed and event.keycode == KEY_C:
+		set_colormap((colormap + 1) % COLORMAP_NAMES.size())
+
+
+## Setzt die Farbskala fuer alle Ebenen (in der Simulationsszene gibt der Server sie vor).
+func set_colormap(index: int) -> void:
+	colormap = clampi(index, 0, COLORMAP_NAMES.size() - 1)
+	for layer: Dictionary in layers.values():
+		for mat: ShaderMaterial in layer.mats:
+			mat.set_shader_parameter("colormap", colormap)
 
 
 func colormap_name() -> String:

@@ -37,7 +37,7 @@ var frozen: bool = false
 ## Darstellungs-Einstellungen, die der Server fuer alle vorgibt (Schluessel -> Wert).
 ## Neue Schluessel hier eintragen, z. B. spaeter Farbskala; scene_view/Szene reagieren auf
 ## view_setting_changed. Clients uebernehmen den Stand des Servers, auch beim Late Join.
-var view_settings: Dictionary = {"show_boxes": true}
+var view_settings: Dictionary = {"show_boxes": true, "colormap": 0}
 
 # Statistik wie udp_receiver.gd (vom Debug-Overlay gelesen)
 var port: int = 4242
@@ -58,6 +58,15 @@ var _receiver: Node = null
 var _last_session: int = -2
 ## magic → {info, payload}; für Wiedergabe nach einem Szenenneuaufbau
 var _last: Dictionary = {}
+
+# Ausgehende Rate (Server -> Clients), vom Debug-Overlay gelesen
+var out_frames_per_s: float = 0.0
+var out_kb_per_s: float = 0.0
+var out_raw_kb_per_s: float = 0.0
+var _out_time: float = 0.0
+var _out_prev_sent: int = 0
+var _out_prev_bytes: int = 0
+var _out_prev_raw: int = 0
 
 var _rate_time: float = 0.0
 var _rate_frames: int = 0
@@ -200,6 +209,8 @@ func _process(delta: float) -> void:
 		session_id = _receiver.session_id
 		last_magic = _receiver.last_magic
 		last_frame_id = _receiver.last_frame_id
+		if role == Role.SERVER:
+			_update_out_rates(delta)
 	elif role == Role.CLIENT:
 		listening = NetworkManager.client_connected_flag
 		last_sender = NetworkManager.server_ip
@@ -213,14 +224,33 @@ func _process(delta: float) -> void:
 			_rate_bytes = 0
 
 
+## Ausgehende Rate des Servers an die Clients, je Sekunde (Summe ueber alle Clients).
+func _update_out_rates(delta: float) -> void:
+	_out_time += delta
+	if _out_time < 1.0:
+		return
+	var s: Dictionary = DataChannel.stats
+	out_frames_per_s = (s.sent - _out_prev_sent) / _out_time
+	out_kb_per_s = (s.bytes_sent - _out_prev_bytes) / 1024.0 / _out_time
+	out_raw_kb_per_s = (s.bytes_raw - _out_prev_raw) / 1024.0 / _out_time
+	_out_prev_sent = s.sent
+	_out_prev_bytes = s.bytes_sent
+	_out_prev_raw = s.bytes_raw
+	_out_time = 0.0
+
+
 ## Zusätzliche Zeilen für das Debug-Overlay.
 func extra_lines() -> Array[String]:
 	var lines: Array[String] = ["Rolle:         %s" % role_name]
 	if frozen:
 		lines.append("Freeze:        EIN")
 	if role == Role.SERVER:
+		var peers: PackedInt32Array = multiplayer.get_peers()
+		lines.append("Clients:       %d  %s" % [peers.size(), str(Array(peers))])
+		lines.append("Aus an Clients: %.1f Frames/s, %.0f KB/s (roh %.0f KB/s, Summe aller Clients)" % [
+			out_frames_per_s, out_kb_per_s, out_raw_kb_per_s])
 		var s: Dictionary = DataChannel.stats
-		lines.append("Relay:         gesendet %d, ersetzt %d, %.1f MB (roh %.1f MB)" % [
+		lines.append("Relay gesamt:  gesendet %d, ersetzt %d, %.1f MB (roh %.1f MB)" % [
 			s.sent, s.skipped, s.bytes_sent / 1048576.0, s.bytes_raw / 1048576.0])
 	elif role == Role.CLIENT:
 		lines.append("Relay:         %d Frames, %.1f MB" % [

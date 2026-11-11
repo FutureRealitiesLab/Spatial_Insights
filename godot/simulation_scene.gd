@@ -13,11 +13,13 @@ func _enter_tree() -> void:
 	var view := $Plot/View
 	view.box_size = Vector3(room.y, room.x, view.box_size.z)
 	view.room_rotation_deg = 90.0
+	view.handle_keys = false   # Farbskala kommt vom Server (SimulationRelay.view_settings)
 
 
 var _freeze_labels: Array[Label3D] = []
 var _freeze_button: Button
 var _boxes_button: Button
+var _colormap_button: Button
 
 
 func _ready() -> void:
@@ -33,7 +35,8 @@ func _ready() -> void:
 
 
 ## Taste F (Server und Direkt-Instanz) haelt die Simulation fuer alle an, Taste B blendet die
-## Rahmen der Spatial Boxes fuer alle ein oder aus. Die Leertaste ist fuer den Boost-Sprung
+## Rahmen der Spatial Boxes fuer alle ein oder aus, Taste C schaltet die Farbskala fuer alle weiter.
+## Die Leertaste ist fuer den Boost-Sprung
 ## der PC-Spieler reserviert.
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -42,6 +45,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				SimulationRelay.toggle_frozen()
 			KEY_B:
 				SimulationRelay.toggle_view_setting("show_boxes")
+			KEY_C:
+				_next_colormap()
 
 
 
@@ -81,18 +86,22 @@ func _build_freeze_ui() -> void:
 		box.offset_bottom = -12.0
 		_freeze_button = _shortcut_button("Freeze (F)", func(on: bool) -> void: SimulationRelay.set_frozen(on))
 		_boxes_button = _shortcut_button("Rahmen (B)", func(on: bool) -> void: SimulationRelay.set_view_setting("show_boxes", on))
+		_colormap_button = _shortcut_button("")
+		_colormap_button.pressed.connect(_next_colormap)
 		box.add_child(_freeze_button)
 		box.add_child(_boxes_button)
+		box.add_child(_colormap_button)
 		$DebugLayer.add_child(box)
 
 
-func _shortcut_button(label: String, on_toggled: Callable) -> Button:
+func _shortcut_button(label: String, on_toggled: Callable = Callable()) -> Button:
 	var button := Button.new()
-	button.toggle_mode = true
+	button.toggle_mode = on_toggled.is_valid()
 	button.text = label
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(120.0, 36.0)
-	button.toggled.connect(on_toggled)
+	button.custom_minimum_size = Vector2(170.0, 36.0)
+	if on_toggled.is_valid():
+		button.toggled.connect(on_toggled)
 	return button
 
 
@@ -109,3 +118,13 @@ func _on_view_setting_changed(key: String, value: Variant) -> void:
 		$Plot/View.set_show_boxes(bool(value))
 		if _boxes_button != null:
 			_boxes_button.set_pressed_no_signal(bool(value))
+	elif key == "colormap":
+		$Plot/View.set_colormap(int(value))
+		if _colormap_button != null:
+			_colormap_button.text = "Farbskala (C): %s" % $Plot/View.colormap_name()
+
+
+## Taste C und Button: naechste Farbskala fuer alle (nur Server und Direkt-Instanz wirken).
+func _next_colormap() -> void:
+	var count: int = ($Plot/View.COLORMAP_NAMES as Array).size()
+	SimulationRelay.set_view_setting("colormap", (int(SimulationRelay.view_settings.get("colormap", 0)) + 1) % count)
