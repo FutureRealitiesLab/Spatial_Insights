@@ -117,6 +117,22 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 
 - [ ] **PC-Versionen testen** (`docs/plan_pc_versionen.md`): Windows-Export `PC`, Menü, Einzelspieler (Server minimiert, Beenden schließt ihn, MATLAB an 127.0.0.1), PC-Client mit IP-Feld, Sprung auf Leertaste, Freeze auf F, PC-Client und Brille sehen sich. Alles umgesetzt, nichts getestet.
 
+### 0b. Plan nächste Session: Datenverteilung (Stand 2026-11-11)
+
+**Befund aus dem Test mit 7 Brillen (GoL):** Bewegung und Rendering laufen flüssig, aber die Simulation ruckelt, weil zu wenige Frames ankommen. Paketverlust (ENet-Wert im Server-Fenster) teilweise über 12 %. Der Server hing dabei selbst per WLAN am Router, jedes Frame lief also zweimal durch die Luft. **Wichtig ist Geschwindigkeit, nicht Vollständigkeit:** Verlorene Frames sind egal, langsame Übertragung ist das Problem.
+
+Heute: Der Server sendet jedes Frame einzeln an jede Brille (ENet, zuverlässig, ein Frame in der Luft bis zum Ack). Ein 281-KB-Frame (GoL 1500², 1 Bit pro Zelle) besteht aus rund 200 ENet-Fragmenten. Bei Verlust wird wiederholt, alles dahinter wartet. `demo2` sendet jeden Schritt doppelt (`C2s2` und `C2s3`).
+
+Reihenfolge:
+
+- [ ] **1. Hardware:** Server und MATLAB-PC per Kabel. Router: 5 GHz, breiter Kanal, Client-Isolation aus, am besten ein eigener Access Point nur für die Brillen. Router-Modell notieren (Multicast-Rate und "multicast to unicast" einstellbar?).
+- [ ] **2. Messen mit Kabel:** GoL 500² und `demo2` mit 1, 3 und 7 Brillen. Pro Brille Verlust, RTT, ack, Frames/s, am Server "Out to clients". Wenn Verlust unter etwa 2 % und flüssig: nichts weiter nötig.
+- [ ] **3. Schnelle Maßnahmen:** einstellbare Maximalrate am Server (`sim/max_hz`), Kugel und Torus aus einem Datensatz (einmal senden, zweimal darstellen).
+- [ ] **4. Alternative ohne Empfangsbestätigung (am wenigsten Aufwand):** Das Ack und das "ein Frame gleichzeitig" fallen weg. Frames gehen unzuverlässig an alle (ENet unreliable oder UDP), der Server begrenzt nur die Rate. Pakete von etwa 1400 Byte, jedes trägt Frame-ID und Position. Zwei Varianten: (a) unvollständige Frames verwerfen, (b) fehlende Pakete als alte Streifen stehen lassen und nur Angekommenes in die Textur schreiben (kein Frame geht verloren, dafür kurz sichtbare Streifen). Bei 200 Fragmenten pro Frame und 12 % Verlust ist (a) ohne kleine Pakete chancenlos.
+- [ ] **5. Änderungen statt Vollbild (Game of Life):** Pro Schritt ändern sich wenige Zellen. Unterschied zum letzten Frame (XOR) komprimiert viel besser, ab und zu ein komplettes Frame als Neustart. Hilft jedem Weg (Einzelstreams, Stream an alle).
+- [ ] **6. Stream an alle (Broadcast oder Multicast):** Der Server sendet einmal, alle hören mit. Der Empfang mit Chunks existiert (`udp_receiver.gd`, Direktmodus). Der Server muss auf etwa 1400 Byte neu zerlegen (MATLAB sendet 65 KB). Steuerung (Freeze, Ansicht, Farben) und Late Join bleiben auf ENet. Einstellbar neben dem bisherigen Weg (`enet` oder `broadcast`), zuerst mit 2 Brillen testen. Risiken: Im WLAN läuft Broadcast und Multicast oft mit 6 Mbit/s ohne Wiederholung (bei 281 KB etwa 0,4 s pro Frame, schlechter als Einzelstreams). Sinnvoll nur, wenn der Router die Multicast-Rate erhöhen lässt oder Multicast in Einzelstreams mit Wiederholung umwandelt. Android filtert Multicast ohne Multicast-Lock (kleines Plugin), Broadcast kommt wahrscheinlich ohne durch (ungetestet).
+- [ ] **7. Entscheidung** nach den Messungen aus 2 bis 5: Einzelstreams mit Kabel reichen, oder Punkt 4 (unzuverlässig) oder Punkt 6 (Stream an alle).
+
 ### 1. PC-Test mit echtem MATLAB
 
 - [x] Server in Godot starten (F5, *Als Server starten*), in MATLAB `udpTest`: Volumen erscheint, Overlay (F3) zeigt Frames.
