@@ -27,7 +27,7 @@ const DEFAULT_JUMP_ENABLED  := true
 const DEFAULT_JUMP_HEIGHT   := 4.0
 const DEFAULT_JUMP_RISE     := 1.2
 const DEFAULT_JUMP_GLIDE    := 6.8
-const DEFAULT_JUMP_BUTTON   := "trigger_click"
+const DEFAULT_JUMP_BUTTON   := "by_touch"
 const DEFAULT_JUMP_SHOW_BUTTONS := false
 
 ## Wird vom Plugin beim Aktivieren registriert, damit die Felder im Editor erscheinen.
@@ -49,7 +49,7 @@ const DEFINITIONS := [
 	{"name": JUMP_GLIDE, "type": TYPE_FLOAT, "default": DEFAULT_JUMP_GLIDE,
 		"hint": PROPERTY_HINT_RANGE, "hint_string": "0.5,30,0.5,or_greater,suffix:s"},
 	{"name": JUMP_BUTTON, "type": TYPE_STRING, "default": DEFAULT_JUMP_BUTTON,
-		"hint": PROPERTY_HINT_ENUM, "hint_string": "trigger_click,grip_click,primary_click,by_touch,ax_touch,by_button,ax_button,select_button,none"},
+		"hint": PROPERTY_HINT_ENUM, "hint_string": "by_touch,ax_touch,trigger_click,grip_click,primary_click,by_button,ax_button,select_button,none"},
 	{"name": JUMP_SHOW_BUTTONS, "type": TYPE_BOOL, "default": DEFAULT_JUMP_SHOW_BUTTONS,
 		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
 ]
