@@ -50,6 +50,8 @@ var _seq: int = 0
 var _latest: Dictionary = {}
 ## peer_id → { channel → { "inflight": bool, "sent_ms": int, "seq": int, "pending": bool } }
 var _peers: Dictionary = {}
+## peer_id → geglaettete Ack-Zeit in ms (gleitender Mittelwert)
+var _ack_ms: Dictionary = {}
 
 
 func _ready() -> void:
@@ -134,6 +136,12 @@ func _on_peer_connected(peer_id: int) -> void:
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	_peers.erase(peer_id)
+	_ack_ms.erase(peer_id)
+
+
+## Geglaettete Ack-Zeit eines Clients in ms (alle Kanaele zusammen), -1 wenn noch keine.
+func get_ack_ms(peer_id: int) -> float:
+	return _ack_ms.get(peer_id, -1.0)
 
 
 ## Client → Server: Frame `seq` ist angekommen. Läuft auf dem Server.
@@ -145,6 +153,11 @@ func _rpc_ack(channel: String, seq: int) -> void:
 	var state := _peer_state(peer_id, channel)
 	if seq < state.seq:
 		return
+	# Ack-Zeit: Senden bis Bestaetigung = Netzlaufzeit hin und zurueck plus Verarbeitung auf dem
+	# Client (Entpacken, Textur-Update), weil der Client erst nach dem Anzeigen bestaetigt.
+	if seq == state.seq and state.inflight:
+		var ms := float(Time.get_ticks_msec() - state.sent_ms)
+		_ack_ms[peer_id] = ms if not _ack_ms.has(peer_id) else lerpf(_ack_ms[peer_id], ms, 0.2)
 	state.inflight = false
 	if state.pending and _latest.has(channel):
 		_send(peer_id, channel, state)

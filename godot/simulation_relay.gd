@@ -241,18 +241,18 @@ func _update_out_rates(delta: float) -> void:
 
 ## Zusätzliche Zeilen für das Debug-Overlay.
 func extra_lines() -> Array[String]:
-	var lines: Array[String] = ["Rolle:         %s" % role_name]
+	var lines: Array[String] = ["Role:          %s" % role_name]
 	if frozen:
-		lines.append("Freeze:        EIN")
+		lines.append("Freeze:        ON")
 	if role == Role.SERVER:
 		var peers: PackedInt32Array = multiplayer.get_peers()
 		lines.append("Clients:       %d  %s" % [peers.size(), str(Array(peers))])
-		lines.append("Aus an Clients: %.1f Frames/s, %.0f KB/s (roh %.0f KB/s, Summe aller Clients)" % [
+		lines.append("Out to clients: %.1f frames/s, %.0f KB/s (raw %.0f KB/s, sum of all clients)" % [
 			out_frames_per_s, out_kb_per_s, out_raw_kb_per_s])
 		var s: Dictionary = DataChannel.stats
-		lines.append("Relay gesamt:  gesendet %d, ersetzt %d, %.1f MB (roh %.1f MB)" % [
+		lines.append("Relay total:   sent %d, replaced %d, %.1f MB (raw %.1f MB)" % [
 			s.sent, s.skipped, s.bytes_sent / 1048576.0, s.bytes_raw / 1048576.0])
 	elif role == Role.CLIENT:
-		lines.append("Relay:         %d Frames, %.1f MB" % [
+		lines.append("Relay:         %d frames, %.1f MB" % [
 			DataChannel.client_stats.frames, DataChannel.client_stats.bytes / 1048576.0])
 	return lines

@@ -85,7 +85,7 @@ func _build_freeze_ui() -> void:
 		box.offset_right = -12.0
 		box.offset_bottom = -12.0
 		_freeze_button = _shortcut_button("Freeze (F)", func(on: bool) -> void: SimulationRelay.set_frozen(on))
-		_boxes_button = _shortcut_button("Rahmen (B)", func(on: bool) -> void: SimulationRelay.set_view_setting("show_boxes", on))
+		_boxes_button = _shortcut_button("Boxes (B)", func(on: bool) -> void: SimulationRelay.set_view_setting("show_boxes", on))
 		_colormap_button = _shortcut_button("")
 		_colormap_button.pressed.connect(_next_colormap)
 		box.add_child(_freeze_button)
@@ -121,7 +121,7 @@ func _on_view_setting_changed(key: String, value: Variant) -> void:
 	elif key == "colormap":
 		$Plot/View.set_colormap(int(value))
 		if _colormap_button != null:
-			_colormap_button.text = "Farbskala (C): %s" % $Plot/View.colormap_name()
+			_colormap_button.text = "Colormap (C): %s" % $Plot/View.colormap_name()
 
 
 ## Taste C und Button: naechste Farbskala fuer alle (nur Server und Direkt-Instanz wirken).
