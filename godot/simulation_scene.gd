@@ -11,8 +11,8 @@ func _enter_tree() -> void:
 	# Läuft vor _ready() der Kinder, damit scene_view.gd die Größe schon kennt.
 	var room: Vector2 = SitusSettings.get_room_size()
 	var view := $Plot/View
-	view.box_size = Vector3(room.x, room.y, view.box_size.z)
-	view.room_rotation_deg = 0.0
+	view.box_size = Vector3(room.y, room.x, view.box_size.z)
+	view.room_rotation_deg = 90.0
 
 
 var _freeze_label: Label3D

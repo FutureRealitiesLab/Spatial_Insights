@@ -2,21 +2,14 @@
 
 Echtzeit-Kopplung: MATLAB berechnet zeitveränderliche Felder, Partikel oder Zellularautomaten und sendet sie per UDP an Godot 4. Godot stellt sie in einem Raum von 4 × 8 m dar (2D-Daten auf dem Boden, 3D-Daten in einer 2 m hohen Box) (Bild, Höhenfläche, Schnitte, Volumen, Pfeile, Partikel, Automat auf Ebene/Kugel/Torus). Langfristiges Ziel: VR-Simulator (siehe [docs/plan.md](docs/plan.md)).
 
-Das Protokoll ist **typisiert**: Ein vierstelliger Magic-String (z. B. `S3v.`, `V2q0`, `P2p1`, `C2m2`) wählt Datenformat und Darstellung. Studierende schreiben nur ihre Simulationsschleife und rufen `udpSend(u, data, frameid)` auf.
+Das Protokoll ist **typisiert**: Ein vierstelliger Magic-String (z. B. `S3v0`, `V2q0`, `P2p1`, `C2s3`) wählt Datenformat und Darstellung. Studierende schreiben nur ihre Simulationsschleife und rufen `udpSend(u, data, frameid)` auf.
 
 **Neu auf einem Rechner?** Siehe [Installation und Konfiguration](docs/INSTALL.md).
 
 ```
-matlab/udp/
-  udpOpen.m        Sender anlegen (Magic, Ziel-IP, Port, Wertebereich)
-  udpSend.m        Frame senden (Quantisierung, Chunking, Header, ein write() pro Frame)
-  udpListen.m      MATLAB-Betrachter (udpReceive + udpDrawnow)
-  udpReceive.m     Frames empfangen und dekodieren
-  udpDrawnow.m     Darstellung in MATLAB
-  test2d.m, test3d.m, udpTest.m, testProtocol.m   Beispiele und Tests
-  README.md        Bedienung des Senders und der MATLAB-Betrachter (englisch)
-  PROTOCOL.md      Paketformat (englisch, maßgeblich)
-  HEADER_SESSION.md  Session-ID
+(MATLAB: nicht im Repo. Die aktuellen Sender und Simulationen liegen vorerst in der HTW-Cloud
+ unter Spatial Insights / Simulation VR Workshop / matlab-udp; später kommt ein demo/-Ordner.
+ Sender: udpOpen, udpSend, udpListen, udpReceive, udpDrawnow, udpTest, PROTOCOL.md.)
 godot/
   project.godot, export_presets.cfg
   addons/situs_core/       Situs Core (git subtree, nicht hier ändern)
@@ -37,15 +30,13 @@ tools/
   setup_android.ps1  richtet einen Rechner für den Android-Export ein
 ```
 
-> **Veraltet:** `matlab/send_via_udp.m`, `udp_config.m`, `simulate_field.m` und `simulate_surface.m` gehören zum alten Protokoll v2 (Magic `0x4456`, Konfigurationspakete). Der neue Godot-Empfänger versteht dieses Format **nicht** mehr. Für neue Simulationen `matlab/udp/` verwenden.
-
 ## Schnellstart
 
 1. **Godot 4.7.2**: `godot/project.godot` importieren und starten (F5), dann *Als Server starten*. Das Overlay (F3) zeigt "lauscht" auf Port 4242. Einrichtung des Rechners: [docs/INSTALL.md](docs/INSTALL.md).
-2. **MATLAB**: `matlab/udp/` zum Pfad hinzufügen und senden:
+2. **MATLAB**: den Ordner `udp/` aus der MATLAB-Sammlung (HTW-Cloud, siehe oben) zum Pfad hinzufügen und senden:
 
 ```matlab
-u = udpOpen(magic="S3v.", address="127.0.0.1", port=4242, vspan=[0 1]);
+u = udpOpen(magic="S3v0", address="127.0.0.1", port=4242, vspan=[0 1]);
 for t = 1:1000
     field = ...;              % [ny nx nz], Werte im Bereich vspan
     udpSend(u, field, t);     % t = aufsteigende Frame-ID
@@ -59,25 +50,24 @@ Zwei Rechner: `address` auf die IPv4-Adresse des Godot-Rechners setzen und dort 
 
 | `magic` | Darstellung | MATLAB-Eingabe |
 |---|---|---|
-| `S2i.` | Skalarfeld als Bild | `[ny nx]` |
-| `S2s.` | Skalarfeld als Höhenfläche | `[ny nx]` |
-| `S3i<n>` | `n` Schnitte entlang z (`0`: drei Mittelschnitte) | `[ny nx nz]` |
-| `S3v.` | Volumen (Raymarching) | `[ny nx nz]` |
-| `V2q<k>` / `V3q<k>` | Pfeile (`k` = 0 automatisch, sonst Pfeillänge in Zellen) | `[ny nx 1 2]` / `[ny nx nz 3]` |
-| `P2p<x>` / `P3p<x>` | Partikelart `x` (eigene Farbe, Geschwindigkeitspfeile bei 4/6 Spalten) | `[N 2\|3\|4\|6]` |
-| `C2i.` | Zellularautomat als Bild | `[ny nx]` |
-| `C2m<0\|1\|2>` | Automat auf Ebene / Kugel / Torus | `[ny nx]` |
+| `S2s<m>` / `C2s<m>` | Skalarfeld bzw. Automat, `m`: 0 Ebene, 1 HÃ¶henflÃ¤che, 2 Kugel, 3 Torus | `[ny nx]` |
+| `S3s<n>` / `C3s<n>` | `n` xy-Schnitte (`0`: drei Mittelschnitte) | `[ny nx nz]` |
+| `S3v<a>` / `C3v<a>` | Volumen (Raymarching), `a`: 0 Standard, 1..9 Deckkraft 0,1..0,9 | `[ny nx nz]` |
+| `V2p<k>` / `V3p<k>` | Gitterpunkte, um den Vektor verschoben (`k`=1 autoskaliert, 0 OriginallÃ¤nge) | `[ny nx 1 2]` / `[ny nx nz 3]` |
+| `V2q<c>` / `V3q<c>` | Pfeile mit exakter LÃ¤nge (`c`=0 Farbe nach Betrag, 1..9 feste Farbe) | wie `V2p` |
+| `P2p<c>` / `P3p<c>` | Partikel (`c`=0 Farbe nach Geschwindigkeit, 1..9 feste Farbe) | `[N nd]` oder `[N 2*nd]` mit Geschwindigkeit |
+| `P2q<c>` / `P3q<c>` | Partikelvektoren (auch StraÃŸen), Vektor mit Boxausdehnung skaliert | `[N 2*nd]` |
 | `T...` | reserviert (Verkehr) | nicht umgesetzt |
 
 Wichtig:
 - **Achsen:** Dimension 1 = y (`ny`), Dimension 2 = x (`nx`), Dimension 3 = z, wie bei MATLAB-`imagesc`. Die Daten werden spaltenweise (`data(:)`) gesendet.
-- **Wertebereich:** `vspan=[vmin vmax]` gilt für alle S/V-Komponenten. Die Werte werden abgeschnitten und auf 0..255 quantisiert. Partikel gehen unquantisiert als `float32`, Positionen normiert auf 0..1. Automaten werden mit 1, 2, 4 oder 8 Bit pro Zustand gepackt (`nostates`).
-- **Ebenen:** Jeder Magic ergibt eine eigene Ebene in der Plotbox (bei `P` je Art). Zwei Datensätze derselben Simulation brauchen **eigene, aufsteigende Frame-IDs** (z. B. 1, 3, 5 Dichte und 2, 4, 6 Vektoren).
-- **Raum und Einpassen:** Der Boden misst 4 m (MATLAB-x, `nx`) × 8 m (MATLAB-y, `ny`) und ist um den Ursprung zentriert. MATLAB-z zeigt nach oben. **2D-Daten** (`S2i`, `S2s`, `V2q`, `P2p`, `C2i`, `C2m0`) liegen auf dem Boden. **3D-Daten** (`S3*`, `V3q`, `P3p`) sowie Kugel und Torus (`C2m1`, `C2m2`) liegen in einer 2 m hohen Box, die 0,5 m über dem Boden beginnt. Die Daten füllen die jeweilige Fläche bzw. Box und werden dabei verzerrt, wenn das Gitter ein anderes Seitenverhältnis hat. Mit `stretch = false` an der Node `View` wird stattdessen ohne Verzerrung eingepasst. Maße: `box_size` und `lift` an der Node `View`. **Ausrichtung:** `room_rotation_deg` an `View` dreht den ganzen Raum um die Senkrechte (Standard 90°: die 8 m-Seite liegt entlang der Godot-x-Achse), um ihn zum echten Raum auszurichten. Später soll das serverseitig einstellbar sein. Höhenflächen (`S2s`) steigen bis zur halben Boxhöhe (1 m).
-
+- **Wertebereich:** `vspan=[vmin vmax]` gilt fÃ¼r alle S/V-Komponenten. Die Werte werden abgeschnitten und auf 0..255 quantisiert. Partikel gehen unquantisiert als `float32`, Positionen normiert auf 0..1. Automaten werden mit 1, 2, 4 oder 8 Bit pro Zustand gepackt (`nostates`).
+- **Ebenen:** Das vollstÃ¤ndige Magic ist der EbenenschlÃ¼ssel, jedes Magic ergibt eine eigene Ebene. Mehrere Magics dÃ¼rfen dieselbe Frame-ID haben, jedes wird getrennt verfolgt. Ein Magic mit anderem 4. Byte (z. B. `S3v2` statt `S3v5`) ist eine andere Ebene.
+- **Spatial Box:** `udpOpen(box=[xmin xmax ymin ymax zmin zmax])` (Standard `[0 8 0 4 0 2]`, Meter) legt fest, wo die Ebene im Raum liegt. Die Box des ersten Frames eines Magics gilt fÃ¼r die ganze Session. 2D-Daten liegen bei `zmin`, HÃ¶henflÃ¤chen reichen von `zmin` bis `zmax`, Kugel und Torus sitzen in der Boxmitte mit dem Radius der kleinsten Kante. Eine Verzerrung gibt es nicht, die Daten fÃ¼llen genau die Box. Der Absender muss die Box in den Raum legen.
+- **Raum und Ausrichtung:** Das Betrachtervolumen (`box_size` an der Node `View`) ist 8 m (MATLAB-x) Ã— 4 m (MATLAB-y) Ã— 2 m (MATLAB-z), MATLAB-z zeigt nach oben. Es wird in `simulation_scene.gd` aus den Situs-Settings gesetzt (lange Seite = x). `room_rotation_deg` an `View` (Situs-Szene: 90Â°) legt die lange x-Seite entlang der Godot-z-Achse, um zum echten Raum auszurichten. SpÃ¤ter soll das serverseitig einstellbar sein.
 ## Paketformat (Kurzfassung)
 
-Jedes Datagramm beginnt mit 20 Byte (little-endian): Magic (4 Byte ASCII), Session-ID, Frame-ID, Chunk-Index und Chunk-Anzahl (je uint32). Danach folgt je nach `magic(1)` ein Zusatz-Header (S/V: 52 Byte gesamt, P: 28, C: 33) und die Nutzdaten. Das vollständige Format steht in [matlab/udp/PROTOCOL.md](matlab/udp/PROTOCOL.md).
+Jedes Datagramm beginnt mit 44 Byte (little-endian): Magic (4 Byte ASCII), Session-ID, Frame-ID, Chunk-Index und Chunk-Anzahl (je uint32) sowie die Spatial Box (6 Ã— float32). Danach folgt je nach `magic(1)` ein Zusatz-Header (S/V: 76 Byte gesamt, P: 52, C: 57) und die Nutzdaten. Das vollständige Format steht in `PROTOCOL.md` im MATLAB-Ordner `udp/` (HTW-Cloud).
 
 - **Session-ID:** `udpOpen` erzeugt pro Lauf eine neue Session-ID. Godot verwirft bei einer neuen ID den alten Zustand und ignoriert späte Pakete der letzten 32 alten Sessions. Eine neu gestartete Simulation wird daher sofort angezeigt, auch wenn die Frame-ID wieder bei 0 beginnt.
 - **Frame-ID:** Innerhalb einer Session werden nur Frames mit einer größeren ID als der letzten fertigen angenommen. Unvollständige Frames werden verworfen (Overlay: "Verworfen"), sobald ein neueres kommt.
@@ -168,7 +158,6 @@ Die Brille bekommt ihre Daten im Normalfall vom Server über den Datenkanal (sie
   ```
   Godot --headless --path godot --script res://selftest.gd
   ```
-- **MATLAB Loopback:** `testProtocol` prüft alle Formate und die Frame-Warteschlange.
 - **Zusammenspiel:** Godot starten, in MATLAB `udpTest` ausführen und im Overlay "Magic" und "Ebenen" beobachten.
 
 ## Auflösung und Datenrate

@@ -19,7 +19,7 @@ Gelesen wurden die Notion-Seite "Technische Basis: Hyper-Irrealismus III Templat
 **Kabel-Hop reich, WLAN-Hop budgetiert. Der Server ist die einzige Datenquelle, die Brillen rendern selbst.**
 
 ```
-MATLAB (Kabel) --UDP, typisiertes Protokoll (matlab/udp/PROTOCOL.md), unverändert--> Server-PC (Kabel)
+MATLAB (Kabel) --UDP, typisiertes Protokoll (`PROTOCOL.md` in der MATLAB-Sammlung, HTW-Cloud), unverändert--> Server-PC (Kabel)
    Server: Empfang + Frame-Zusammenbau (bestehende Logik), optional Downsampling/Kompression
    Server --ENet, eigener Kanal, Ack-Flusskontrolle, uint8-Skalarfeld (+Config)--> Brillen (WLAN)
    Brille: Textur (ImageTexture3D R8) + Raymarch-Shader + Interpolation lokal
@@ -144,7 +144,7 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 - [ ] Entscheiden, ob die geänderte `godot/export_presets.cfg` committet wird.
 - [x] Branch `feature/situs-core` nach `main` gemergt (2026-10-30, Fast-Forward) und gelöscht.
 - [ ] Tags `v1.0.0` und `v1.1.0` im Situs-Repo setzen und `dist` neu bauen (nach den Tests).
-- [ ] `matlab/udp/PROTOCOL.md` und README auf den Stand der Tests bringen.
+- [ ] MATLAB-Simulationen als `demo/`-Ordner ins Repo holen (bisher in der HTW-Cloud, `matlab/` wurde aus dem Repo entfernt).
 
 ### 6. Situs-Seite (siehe `situs-core/docs/plan.md`)
 

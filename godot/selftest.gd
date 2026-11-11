@@ -25,11 +25,15 @@ func _check(cond: bool, what: String) -> void:
 
 func _base(magic: String, session: int, frame: int, index: int, count: int) -> PackedByteArray:
 	var b := PackedByteArray()
-	b.resize(20)
+	b.resize(44)
 	b.encode_u32(4, session)
 	b.encode_u32(8, frame)
 	b.encode_u32(12, index)
 	b.encode_u32(16, count)
+	# Spatial Box [xmin xmax ymin ymax zmin zmax] ab Byte 20 (float32).
+	var box := [0.0, 8.0, 0.0, 4.0, 0.0, 2.0]
+	for i in 6:
+		b.encode_float(20 + 4 * i, box[i])
 	var m := magic.to_ascii_buffer()
 	for i in 4:
 		b[i] = m[i]
@@ -151,12 +155,13 @@ func _test_scene() -> void:
 	var view: Node = scene.get_node("Plot/View")
 
 	var cases := [
-		["S2i0", [12, 16, 1, 1]], ["S2s0", [12, 16, 1, 1]],
-		["S3i0", [8, 10, 6, 1]], ["S3i3", [8, 10, 6, 1]], ["S3v0", [8, 10, 6, 1]],
-		["V2q0", [8, 10, 1, 2]], ["V2q3", [8, 10, 1, 2]],
-		["V3q0", [6, 6, 4, 3]], ["V3q2", [6, 6, 4, 3]],
-		["P2p0", [20, 4]], ["P3p1", [20, 6]],
-		["C2i0", [9, 11, 1]], ["C2m0", [9, 11, 1]], ["C2m1", [9, 11, 1]], ["C2m2", [9, 11, 1]],
+		["S2s0", [12, 16, 1, 1]], ["S2s1", [12, 16, 1, 1]], ["S2s2", [12, 16, 1, 1]], ["S2s3", [12, 16, 1, 1]],
+		["S3s0", [8, 10, 6, 1]], ["S3s3", [8, 10, 6, 1]], ["S3v0", [8, 10, 6, 1]], ["S3v5", [8, 10, 6, 1]],
+		["V2p1", [8, 10, 1, 2]], ["V2q0", [8, 10, 1, 2]], ["V2q3", [8, 10, 1, 2]],
+		["V3p0", [6, 6, 4, 3]], ["V3q0", [6, 6, 4, 3]], ["V3q2", [6, 6, 4, 3]],
+		["P2p0", [20, 4]], ["P2p1", [20, 2]], ["P2q0", [20, 4]], ["P3p0", [20, 6]], ["P3q2", [20, 6]],
+		["C2s0", [9, 11, 1]], ["C2s1", [9, 11, 1]], ["C2s2", [9, 11, 1]], ["C2s3", [9, 11, 1]],
+		["C3s0", [6, 7, 5]], ["C3v0", [6, 7, 5]],
 	]
 	var frame := 0
 	for round_index in 2:  # Zweite Runde: Update statt Neuaufbau.
@@ -188,15 +193,13 @@ func _test_scene() -> void:
 			_check(not f.is_empty(), "frame " + magic)
 			if not f.is_empty():
 				view.show_frame(f.magic, f.info, f.payload)
-	_check(view.layers.size() == 10, "layer count %d" % view.layers.size())
-	# 2D-Daten liegen auf dem Boden, 3D-Daten (und Kugel/Torus) ueber `lift`.
-	for key: String in ["S2i", "S2s", "V2q", "P2p0", "C2i"]:
-		_check(view.layers.has(key) and is_zero_approx(view.layers[key].root.position.z), "floor " + key)
-	for key: String in ["S3i", "S3v", "V3q", "P3p1", "C2m"]:
-		_check(view.layers.has(key) and is_equal_approx(view.layers[key].root.position.z, view.lift), "raised " + key)
-	# MATLAB x/y/z -> Raum: x entlang 4 m, y entlang 8 m (in den Raum), z nach oben.
+	_check(view.layers.size() == cases.size(), "layer count %d" % view.layers.size())
+	# 2D-Daten liegen bei zmin der Box, jede Ebene traegt die Box des Senders.
+	for key: String in ["S2s0", "V2q0", "P2p0", "C2s0"]:
+		_check(view.layers.has(key) and is_zero_approx(view.layers[key].o.z), "floor " + key)
+	_check(view.layers["S3v0"].e.is_equal_approx(Vector3(8.0, 4.0, 2.0)), "box extent")
+	# MATLAB x/y/z -> Raum: x (8 m) entlang -z, y (4 m) entlang -x, z nach oben.
 	var plot: Node3D = view.get_parent()
 	var corner: Vector3 = plot.transform * Vector3(view.box_size.x, view.box_size.y, view.box_size.z)
-	# Bei room_rotation_deg = 90 liegt die 8 m-Seite entlang x, die 4 m-Seite entlang z.
-	_check(corner.is_equal_approx(Vector3(-4.0, 2.0, -2.0)), "plot corner %s" % corner)
+	_check(corner.is_equal_approx(Vector3(-2.0, 2.0, -4.0)), "plot corner %s" % corner)
 	scene.free()

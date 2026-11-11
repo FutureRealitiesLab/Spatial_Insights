@@ -19,7 +19,7 @@ powershell -ExecutionPolicy Bypass -File tools\setup_android.ps1
 
    Das dauert eine Weile und lädt mehrere GB aus dem Internet. Das Skript installiert alles, was für den Android-Export nötig ist (siehe unten) und akzeptiert dabei die Android-SDK-Lizenzen. Man kann es gefahrlos erneut starten, Vorhandenes wird übersprungen.
 4. **Projekt in Godot öffnen:** Godot starten, den Ordner `godot/` importieren. Beim ersten Öffnen importiert Godot die Dateien.
-5. **MATLAB** (separat installiert, kein Teil des Skripts): `matlab/udp/` zum Pfad hinzufügen.
+5. **MATLAB** (separat installiert, kein Teil des Skripts): den Ordner `udp/` aus der MATLAB-Sammlung (HTW-Cloud, Spatial Insights / Simulation VR Workshop) zum Pfad hinzufügen. Ein `matlab/`-Ordner im Repo gibt es nicht mehr.
 6. **Testen:** In Godot F5 drücken, *Als Server starten*. In MATLAB `udpTest` ausführen. Das Overlay (F3) zeigt Frames und Ebenen. Eine zweite Instanz (*Debug → Run Multiple Instances*) mit *Als Spieler starten (Lokal / 127.0.0.1)* sieht dieselben Daten.
 
 Damit läuft das Projekt auf dem PC. Für die Brillen:
