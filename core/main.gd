@@ -87,7 +87,7 @@ func _update_connect_label(_text: String = "") -> void:
 	var ip: String = $Menu/Center/VBox/IpEdit.text.strip_edges()
 	if ip.is_empty():
 		ip = NetworkManager.server_ip
-	$Menu/Center/VBox/BtnFPS.text = "Client mit Verbindung zu %s" % ip
+	$Menu/Center/VBox/BtnFPS.text = "Client connecting to %s" % ip
 
 
 func _launch() -> void:
@@ -99,14 +99,14 @@ func _launch() -> void:
 		for addr: String in IP.get_local_addresses():
 			if "." in addr and not addr.begins_with("127.") and not addr.begins_with("169.254."):
 				addrs.append(addr)
-		var lines: PackedStringArray = ["Port %d  –  Lausche auf:" % NetworkManager.PORT]
+		var lines: PackedStringArray = ["Port %d  -  Listening on:" % NetworkManager.PORT]
 		if GameState.local_only:
-			lines.append("  127.0.0.1 (nur dieser PC)")
+			lines.append("  127.0.0.1 (this PC only)")
 		else:
 			for addr in addrs:
 				lines.append("  %s" % addr)
 			if addrs.is_empty():
-				lines.append("  (keine Netzwerkverbindung?)")
+				lines.append("  (no network connection?)")
 		_hud_base_lines = lines
 		_update_server_hud()
 
@@ -239,7 +239,7 @@ func _on_btn_toggle_auto_pressed() -> void:
 func _on_auto_advance_toggled(enabled: bool) -> void:
 	if not $ServerHUD.visible:
 		return
-	$ServerHUD/Panel/VBox/BtnToggleAuto.text = "Auto-Wechsel: %s  [L]" % ("AN" if enabled else "AUS")
+	$ServerHUD/Panel/VBox/BtnToggleAuto.text = "Auto-advance: %s  [L]" % ("ON" if enabled else "OFF")
 	_update_server_hud_timer_label()
 
 
@@ -267,9 +267,9 @@ func _on_timer_tick(remaining: float, total: float) -> void:
 	if _scene_loop == null:
 		return
 	if not _scene_loop.auto_advance:
-		$ServerHUD/Panel/VBox/TimerLabel.text = "Auto-Wechsel: AUS [L] (N = manuell)"
+		$ServerHUD/Panel/VBox/TimerLabel.text = "Auto-advance: OFF [L] (N = manual)"
 		return
-	$ServerHUD/Panel/VBox/TimerLabel.text = "Wechsel in: %ds" % max(0, int(remaining))
+	$ServerHUD/Panel/VBox/TimerLabel.text = "Next in: %ds" % max(0, int(remaining))
 	if total > 0.0:
 		$ServerHUD/Panel/VBox/TimerBar.value = clamp((remaining / total) * 100.0, 0.0, 100.0)
 
@@ -288,8 +288,9 @@ func _update_server_hud() -> void:
 	var lines: PackedStringArray = _hud_base_lines.duplicate()
 	var peers: PackedInt32Array = multiplayer.get_peers() if multiplayer.has_multiplayer_peer() else PackedInt32Array()
 	lines.append("")
-	lines.append("Clients: %d" % peers.size())
+	lines.append("Clients: %d  (ID, color, RTT, loss, IP, ack)" % peers.size())
 	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	var channel := get_node_or_null("/root/DataChannel")   # optionales Modul modul_data_channel
 	for pid: int in peers:
 		var hex: String = "#%s" % GameState.get_color_for_id(pid).to_html(false).to_upper()
 		var info := "  #%d  %s" % [pid, hex]
@@ -298,6 +299,8 @@ func _update_server_hud() -> void:
 			var loss: float = peer.get_statistic(ENetPacketPeer.PEER_PACKET_LOSS) / 65536.0 * 100.0
 			info += "  %d ms  %.1f %%  %s" % [
 				int(peer.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME)), loss, peer.get_remote_address()]
+		if channel != null and channel.has_method("get_ack_ms") and channel.get_ack_ms(pid) >= 0.0:
+			info += "  ack %d ms" % int(channel.get_ack_ms(pid))
 		lines.append(info)
 	$ServerHUD/Panel/VBox/NetworkLabel.text = "\n".join(lines)
 
@@ -340,14 +343,14 @@ func _update_net_diag() -> void:
 	if GameState.mode != GameState.Mode.SERVER:
 		lines.append("Server: %s:%d" % [NetworkManager.server_ip, NetworkManager.PORT])
 		if NetworkManager.client_connected_flag:
-			lines.append("Status: Verbunden ✓")
+			lines.append("Status: Connected")
 		elif NetworkManager.reconnect_attempts > 0:
-			lines.append("Status: Verbinde … (Versuch %d)" % NetworkManager.reconnect_attempts)
+			lines.append("Status: Connecting ... (attempt %d)" % NetworkManager.reconnect_attempts)
 		else:
-			lines.append("Status: Nicht verbunden")
+			lines.append("Status: Not connected")
 
 	lines.append("My ID: %s" % (str(GameState.my_id) if GameState.my_id != 0 else "—"))
-	lines.append("Szene: %d / %d" % [SceneManager.current_index + 1, SceneManager.scenes_list.size()])
+	lines.append("Scene: %d / %d" % [SceneManager.current_index + 1, SceneManager.scenes_list.size()])
 	if multiplayer.has_multiplayer_peer():
 		var peers := multiplayer.get_peers()
 		lines.append("Peers: %d" % peers.size())

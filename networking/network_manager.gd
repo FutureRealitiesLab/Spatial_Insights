@@ -211,6 +211,25 @@ func _rpc_set_player_color(peer_id: int, color: Color) -> void:
 		SceneManager.self_avatar.peer_id = peer_id
 
 
+## Client -> Server: neue Zufallsfarbe für den eigenen Avatar anfordern (z. B. Taste ax_touch).
+## Der Server würfelt, speichert sie und verteilt sie an alle (auch an den Anfragenden).
+func request_random_color() -> void:
+	if client_connected_flag:
+		_rpc_request_random_color.rpc_id(1)
+
+
+@rpc("any_peer", "reliable", "call_remote")
+func _rpc_request_random_color() -> void:
+	if not multiplayer.is_server():
+		return
+	var id: int = multiplayer.get_remote_sender_id()
+	var color := Color.from_hsv(randf(), randf_range(0.65, 1.0), randf_range(0.85, 1.0))
+	GameState.set_color_for_id(id, color)
+	if SceneManager.remote_avatars.has(id):
+		SceneManager.remote_avatars[id].peer_id = id   # re-triggert _apply_color() auf dem Server
+	_rpc_set_player_color.rpc(id, color)
+
+
 # ── Server-seitige Callbacks ─────────────────────────────────────
 
 func _on_peer_connected(id: int) -> void:

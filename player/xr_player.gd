@@ -60,6 +60,7 @@ func _ready() -> void:
 	$XRCamera3D.make_current()
 	if has_node("LeftHand"):
 		$LeftHand.button_pressed.connect(_on_button)
+		$LeftHand.button_pressed.connect(_on_hand_button)
 		$LeftHand.button_pressed.connect(_flash_hand.bind(0))
 		$LeftHand.button_pressed.connect(_show_button_info.bind(0))
 		$LeftHand.input_vector2_changed.connect(_on_left_stick)
@@ -67,7 +68,7 @@ func _ready() -> void:
 		$RightHand.button_pressed.connect(_on_button)
 		$RightHand.button_pressed.connect(_flash_hand.bind(1))
 		$RightHand.button_pressed.connect(_show_button_info.bind(1))
-		$RightHand.button_pressed.connect(_on_right_button)
+		$RightHand.button_pressed.connect(_on_hand_button)
 		$RightHand.input_vector2_changed.connect(_on_right_stick)
 
 
@@ -80,10 +81,13 @@ func _on_button(button_name: String) -> void:
 		SceneManager.advance_scene()
 
 
-## B-Taste (nur rechter Controller) löst den Sprung aus.
-func _on_right_button(button_name: String) -> void:
+## Sprungtaste (Setting Situs Core -> Jump -> Button) auf beiden Controllern löst den Sprung aus.
+## ax_touch (X links, A rechts) würfelt die eigene Spielerfarbe neu, alle sehen sie.
+func _on_hand_button(button_name: String) -> void:
 	if button_name == SitusSettings.get_jump_button():
 		start_boost()
+	if button_name == "ax_touch":
+		NetworkManager.request_random_color()
 
 
 ## Zeigt Hand, Aktionsname der Taste und das aktive Controller-Profil (OpenXR) im Blickfeld.
@@ -98,7 +102,7 @@ func _show_button_info(button_name: String, hand_index: int) -> void:
 		var tracker := XRServer.get_tracker(ctrl.tracker) as XRPositionalTracker
 		if tracker != null and tracker.profile != "":
 			profile = tracker.profile.get_file()   # z. B. vive_focus3_controller
-	_show_hint("%s: %s\nProfil: %s" % ["links" if hand_index == 0 else "rechts", button_name, profile])
+	_show_hint("%s: %s\nProfile: %s" % ["left" if hand_index == 0 else "right", button_name, profile])
 
 
 ## Kurzer Hinweistext im Blickfeld (zeigt den Namen der gedrückten Taste), um die
