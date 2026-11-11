@@ -22,6 +22,7 @@ extends Node3D
 ## spaltenweisen Payload erzeugt; die Shader vertauschen x und y.
 
 const Receiver := preload("res://udp_receiver.gd")
+const BoxOutline := preload("res://box_outline.gd")
 
 @export var receiver_path: NodePath
 ## Betrachtervolumen in Metern: x, y (Bodenflaeche) und z (Hoehe). Die lange Seite
@@ -86,10 +87,10 @@ func _apply_layout() -> void:
 		var yaw := Basis(Vector3.UP, deg_to_rad(room_rotation_deg))
 		plot.transform = Transform3D(yaw * Basis(Vector3.RIGHT, -PI / 2.0),
 				yaw * Vector3(-box_size.x / 2.0, 0.0, box_size.y / 2.0))
+	# Der Rahmen des Betrachtervolumens bleibt aus: Jede Ebene zeichnet ihre eigene Box.
 	var outline := get_node_or_null(outline_path) as Node3D
 	if outline:
-		outline.scale = box_size
-		outline.position = box_size / 2.0
+		outline.visible = false
 	var floor_outline := get_node_or_null(floor_outline_path) as Node3D
 	if floor_outline:
 		floor_outline.scale = Vector3(box_size.x, box_size.y, 0.001)
@@ -123,6 +124,12 @@ func show_frame(magic: String, info: Dictionary, payload: PackedByteArray) -> vo
 				"o": origin, "e": extent}
 		add_child(layer.root)
 		layers[magic] = layer
+		# Weisser Rahmen der Spatial Box dieser Ebene (folgt dem Datensatz).
+		var frame_lines := MeshInstance3D.new()
+		frame_lines.set_script(BoxOutline)
+		frame_lines.scale = extent
+		frame_lines.position = origin + extent / 2.0
+		layer.root.add_child(frame_lines)
 
 	var ok := false
 	match magic[0]:

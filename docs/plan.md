@@ -100,6 +100,16 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 
 ### 0. Test nächste Session
 
+**Ergebnis Brillentest 2026-11-11** (3 Brillen, APK 1.261111.01, GoL-Demos):
+- [x] Drei Brillen gleichzeitig funktionieren (mehr waren noch nicht verfügbar). Late Join funktioniert. Raumrotation ist korrekt.
+- [x] Protokoll v2: alle Magics erscheinen, zwei Magics laufen gleichzeitig.
+- [x] Boost-Sprung durch Hinknien und schnelles Aufstehen löst aus. Ringsäule lokal und bei den anderen korrekt. Lineare Schleppe gut. Controller in Spielerfarbe, blitzen auf.
+- [x] Freeze funktioniert. Schild jetzt auf den vier Seitenflächen statt drehend in der Mitte, Button rechts oben.
+- [ ] Sprungtaste: Profil `touch_controller`, es kommen nur `ax_touch`, `by_touch`, `trigger_click`, `grip_click`, `primary_click` an. Neuer Standard `trigger_click` testen.
+- [ ] Spatial Box: Rahmen je Ebene aus dem Datensatz (neu), prüfen, ob er mit den Daten deckungsgleich ist.
+- [ ] GoL-Demo2 (1500×1500, zwei Magics) ruckelt gelegentlich: Overlay-Werte (Frames/s, Verworfen, Relay gesendet/ersetzt) notieren, Rate in MATLAB begrenzen.
+- [ ] PC-Versionen weiterhin ungetestet. 4 und 8 Brillen offen.
+
 - [ ] **Boost-Sprung** (aus Situs Core, Details in dessen `docs/plan.md`): Körpersprung löst aus. Prüfen, ob der überarbeitete Verlauf (Wurf auf 4 m in 1,2 s, Sinken über 6,8 s, insgesamt rund 8 s) realistisch wirkt. Sprungtaste B löst nicht aus: beim Drücken zeigt ein Hinweis im Blickfeld den Namen der Taste, diesen in *Project Settings → Situs Core → Jump → Button* eintragen. Die genaue Flugzeit aus der Anforderung war abgeschnitten, 8 s sind angenommen.
 - [ ] Zweite Brille: Ringsäule beim Sprung (Lücken, Ringanzahl), Körper bleibt am Boden.
 - [ ] **Freeze** auf mehreren Brillen prüfen (Schild, Standbild, Late Join während Freeze).
