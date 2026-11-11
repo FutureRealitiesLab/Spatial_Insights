@@ -39,18 +39,18 @@ func _update() -> void:
 	visible = true
 	var attempts: int = NetworkManager.reconnect_attempts
 	var lines: PackedStringArray = []
-	lines.append("Keine Verbindung")
+	lines.append("No connection")
 	lines.append("%s : %d" % [NetworkManager.server_ip, NetworkManager.PORT])
 	if attempts > 0:
-		lines.append("Versuch %d …" % attempts)
+		lines.append("Attempt %d ..." % attempts)
 	else:
-		lines.append("Verbinde …")
+		lines.append("Connecting ...")
 
 	if GameState.mode == GameState.Mode.FPS:
 		lines.append("")
-		lines.append("Auf PC: Drücke Q/E für Standalone-Modus")
+		lines.append("On PC: press Q/E for standalone mode")
 	elif GameState.mode == GameState.Mode.XR:
 		lines.append("")
-		lines.append("VR: Beliebigen Button drücken für Standalone-Modus")
+		lines.append("VR: press any button for standalone mode")
 
 	text = "\n".join(lines)

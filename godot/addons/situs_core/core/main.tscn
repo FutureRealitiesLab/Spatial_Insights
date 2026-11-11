@@ -42,7 +42,7 @@ horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="Menu/Center/VBox" unique_id=194754703]
 layout_mode = 2
-text = "Wähle deinen Startmodus:"
+text = "Choose your start mode:"
 horizontal_alignment = 1
 
 [node name="HSep" type="HSeparator" parent="Menu/Center/VBox" unique_id=825257186]
@@ -57,12 +57,12 @@ alignment = 1
 [node name="BtnFPS" type="Button" parent="Menu/Center/VBox" unique_id=163488456]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "Client mit Verbindung zu …"
+text = "Client connecting to ..."
 
 [node name="BtnFPSLocal" type="Button" parent="Menu/Center/VBox" unique_id=163488457]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "Client mit Verbindung zu 127.0.0.1"
+text = "Client connecting to 127.0.0.1"
 
 [node name="HSep2" type="HSeparator" parent="Menu/Center/VBox"]
 layout_mode = 2
@@ -70,11 +70,11 @@ layout_mode = 2
 [node name="BtnSolo" type="Button" parent="Menu/Center/VBox"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "Einzelspieler (Server + Spieler auf diesem PC)"
+text = "Single player (server + player on this PC)"
 
 [node name="CheckLan" type="CheckBox" parent="Menu/Center/VBox"]
 layout_mode = 2
-text = "Für andere im LAN öffnen (Brillen, weitere PCs)"
+text = "Open to others on the LAN (headsets, more PCs)"
 
 [node name="HSep3" type="HSeparator" parent="Menu/Center/VBox"]
 layout_mode = 2
@@ -82,7 +82,7 @@ layout_mode = 2
 [node name="BtnServer" type="Button" parent="Menu/Center/VBox" unique_id=1053973096]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "Als Server starten"
+text = "Start as server"
 
 [node name="ServerHUD" type="CanvasLayer" parent="." unique_id=275842784]
 layer = 10
@@ -92,7 +92,7 @@ visible = false
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -400.0
+offset_left = -480.0
 offset_bottom = 160.0
 
 [node name="VBox" type="VBoxContainer" parent="ServerHUD/Panel" unique_id=1962062901]
@@ -102,12 +102,12 @@ theme_override_constants/separation = 8
 [node name="NetworkLabel" type="Label" parent="ServerHUD/Panel/VBox" unique_id=228237326]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
-text = "Netzwerk: –"
+text = "Network: -"
 
 [node name="SceneLabel" type="Label" parent="ServerHUD/Panel/VBox" unique_id=1132944006]
 layout_mode = 2
 theme_override_font_sizes/font_size = 15
-text = "Szene: –"
+text = "Scene: -"
 
 [node name="TimerLabel" type="Label" parent="ServerHUD/Panel/VBox" unique_id=1342362479]
 layout_mode = 2
@@ -122,12 +122,12 @@ show_percentage = false
 [node name="BtnNext" type="Button" parent="ServerHUD/Panel/VBox" unique_id=1806511377]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-text = "Nächste Szene  [N]"
+text = "Next scene  [N]"
 
 [node name="BtnToggleAuto" type="Button" parent="ServerHUD/Panel/VBox" unique_id=1806511378]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-text = "Auto-Wechsel: AN  [L]"
+text = "Auto-advance: ON  [L]"
 
 [node name="FadeOverlay" type="CanvasLayer" parent="." unique_id=2089580227]
 layer = 20
