@@ -9,6 +9,9 @@
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
 background_color = Color(0.04, 0.05, 0.08, 1)
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.4
 
 [sub_resource type="BoxShape3D" id="BoxShape_floor"]
 size = Vector3(100, 0.2, 100)

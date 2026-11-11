@@ -20,6 +20,8 @@ extends Node
 signal frame_received(magic: String, info: Dictionary, payload: PackedByteArray)
 ## Freeze wurde ein- oder ausgeschaltet (lokal oder vom Server).
 signal frozen_changed(frozen: bool)
+## Eine Darstellungs-Einstellung hat sich geaendert (lokal oder vom Server).
+signal view_setting_changed(key: String, value: Variant)
 
 const UdpReceiver := preload("res://udp_receiver.gd")
 const CHANNEL_PREFIX := "sim/"
@@ -32,6 +34,10 @@ var role: Role = Role.NONE
 var role_name: String = "-"
 ## true = Simulation angehalten (siehe Kopfkommentar)
 var frozen: bool = false
+## Darstellungs-Einstellungen, die der Server fuer alle vorgibt (Schluessel -> Wert).
+## Neue Schluessel hier eintragen, z. B. spaeter Farbskala; scene_view/Szene reagieren auf
+## view_setting_changed. Clients uebernehmen den Stand des Servers, auch beim Late Join.
+var view_settings: Dictionary = {"show_boxes": true}
 
 # Statistik wie udp_receiver.gd (vom Debug-Overlay gelesen)
 var port: int = 4242
@@ -112,6 +118,29 @@ func _apply_frozen(value: bool) -> void:
 	frozen = value
 	print("[SimulationRelay] Freeze: ", "EIN" if frozen else "AUS")
 	frozen_changed.emit(frozen)
+
+
+## Setzt eine Darstellungs-Einstellung fuer alle. Nur Server und Direkt-Instanz.
+func set_view_setting(key: String, value: Variant) -> void:
+	if role != Role.SERVER and role != Role.DIRECT:
+		return
+	if view_settings.get(key) == value:
+		return
+	view_settings[key] = value
+	view_setting_changed.emit(key, value)
+	if role == Role.SERVER:
+		_rpc_view_settings.rpc(view_settings)
+
+
+func toggle_view_setting(key: String) -> void:
+	set_view_setting(key, not bool(view_settings.get(key, false)))
+
+
+@rpc("authority", "reliable", "call_remote")
+func _rpc_view_settings(settings: Dictionary) -> void:
+	view_settings = settings
+	for key: String in settings:
+		view_setting_changed.emit(key, settings[key])
 
 
 func _start_udp() -> void:

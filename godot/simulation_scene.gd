@@ -17,6 +17,7 @@ func _enter_tree() -> void:
 
 var _freeze_labels: Array[Label3D] = []
 var _freeze_button: Button
+var _boxes_button: Button
 
 
 func _ready() -> void:
@@ -26,17 +27,26 @@ func _ready() -> void:
 	_build_freeze_ui()
 	SimulationRelay.frozen_changed.connect(_on_frozen_changed)
 	_on_frozen_changed(SimulationRelay.frozen)
+	SimulationRelay.view_setting_changed.connect(_on_view_setting_changed)
+	for key: String in SimulationRelay.view_settings:
+		_on_view_setting_changed(key, SimulationRelay.view_settings[key])
 
 
-## Taste F (Server und Direkt-Instanz) hält die Simulation für alle an. Die Leertaste ist
-## für den Boost-Sprung der PC-Spieler reserviert.
+## Taste F (Server und Direkt-Instanz) haelt die Simulation fuer alle an, Taste B blendet die
+## Rahmen der Spatial Boxes fuer alle ein oder aus. Die Leertaste ist fuer den Boost-Sprung
+## der PC-Spieler reserviert.
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
-		SimulationRelay.toggle_frozen()
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_F:
+				SimulationRelay.toggle_frozen()
+			KEY_B:
+				SimulationRelay.toggle_view_setting("show_boxes")
+
 
 
 ## "FREEZE" mittig auf den vier Seitenflaechen des Raums (ca. 1 m breit, ohne Drehung, von
-## innen lesbar) und ein Button rechts oben fuer den Server.
+## innen lesbar) und Buttons unten rechts fuer den Server (oben rechts stehen die Client-Infos).
 func _build_freeze_ui() -> void:
 	var room: Vector2 = SitusSettings.get_room_size()   # x = Breite, y = Laenge (Godot-z)
 	var height: float = ($Plot/View.box_size as Vector3).z / 2.0
@@ -62,21 +72,40 @@ func _build_freeze_ui() -> void:
 		_freeze_labels.append(label)
 
 	if SimulationRelay.role == SimulationRelay.Role.SERVER or SimulationRelay.role == SimulationRelay.Role.DIRECT:
-		_freeze_button = Button.new()
-		_freeze_button.toggle_mode = true
-		_freeze_button.text = "Freeze (F)"
-		_freeze_button.focus_mode = Control.FOCUS_NONE
-		# Rechts oben am Fensterrand, waechst mit der Fenstergroesse (Stretch-Modus).
-		_freeze_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		_freeze_button.offset_left = -132.0
-		_freeze_button.offset_right = -12.0
-		_freeze_button.offset_top = 12.0
-		_freeze_button.offset_bottom = 48.0
-		_freeze_button.toggled.connect(func(on: bool) -> void: SimulationRelay.set_frozen(on))
-		$DebugLayer.add_child(_freeze_button)
+		# Shortcuts des Servers unten rechts; waechst mit der Fenstergroesse (Stretch-Modus).
+		var box := VBoxContainer.new()
+		box.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		box.offset_right = -12.0
+		box.offset_bottom = -12.0
+		_freeze_button = _shortcut_button("Freeze (F)", func(on: bool) -> void: SimulationRelay.set_frozen(on))
+		_boxes_button = _shortcut_button("Rahmen (B)", func(on: bool) -> void: SimulationRelay.set_view_setting("show_boxes", on))
+		box.add_child(_freeze_button)
+		box.add_child(_boxes_button)
+		$DebugLayer.add_child(box)
+
+
+func _shortcut_button(label: String, on_toggled: Callable) -> Button:
+	var button := Button.new()
+	button.toggle_mode = true
+	button.text = label
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(120.0, 36.0)
+	button.toggled.connect(on_toggled)
+	return button
+
 
 func _on_frozen_changed(frozen: bool) -> void:
 	for label: Label3D in _freeze_labels:
 		label.visible = frozen
 	if _freeze_button != null:
 		_freeze_button.set_pressed_no_signal(frozen)
+
+
+## Darstellungs-Einstellungen kommen vom Server (SimulationRelay.view_settings).
+func _on_view_setting_changed(key: String, value: Variant) -> void:
+	if key == "show_boxes":
+		$Plot/View.set_show_boxes(bool(value))
+		if _boxes_button != null:
+			_boxes_button.set_pressed_no_signal(bool(value))

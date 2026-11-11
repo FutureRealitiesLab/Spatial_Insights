@@ -50,6 +50,8 @@ const MAX_SURFACE_SEGMENTS := 255
 const PACKED_TEX_WIDTH := 2048
 
 var layers: Dictionary = {}
+## Rahmen der Spatial Boxes sichtbar (der Server gibt das vor, siehe SimulationRelay).
+var show_boxes := true
 var current_magic: String = ""
 var _session: int = -1
 var _arrow_mesh: ArrayMesh
@@ -130,6 +132,8 @@ func show_frame(magic: String, info: Dictionary, payload: PackedByteArray) -> vo
 		frame_lines.scale = extent
 		frame_lines.position = origin + extent / 2.0
 		layer.root.add_child(frame_lines)
+		layer.frame = frame_lines
+		frame_lines.visible = show_boxes
 
 	var ok := false
 	match magic[0]:
@@ -145,6 +149,13 @@ func show_frame(magic: String, info: Dictionary, payload: PackedByteArray) -> vo
 		push_warning("Keine Darstellung fuer Magic %s." % magic)
 		layer.root.queue_free()
 		layers.erase(magic)
+
+
+func set_show_boxes(value: bool) -> void:
+	show_boxes = value
+	for layer: Dictionary in layers.values():
+		if layer.has("frame"):
+			(layer.frame as Node3D).visible = value
 
 
 func _clear() -> void:
@@ -510,12 +521,12 @@ func _set_points(layer: Dictionary, rebuild: bool, points: PackedVector3Array,
 		var ball := SphereMesh.new()
 		ball.radius = radius
 		ball.height = 2.0 * radius
-		ball.radial_segments = 8
-		ball.rings = 4
+		ball.radial_segments = 16
+		ball.rings = 8
 		created.mesh = ball
 		var mi := MultiMeshInstance3D.new()
 		mi.multimesh = created
-		mi.material_override = _flat_material(Color.WHITE, true)
+		mi.material_override = _lit_material()
 		layer.root.add_child(mi)
 		layer.spheres = created
 	var spheres: MultiMesh = layer.spheres
@@ -589,6 +600,15 @@ func _set_arrows(mm: MultiMesh, positions: PackedVector3Array, vectors: PackedVe
 			basis = Basis(x * len, y * len, z * len)
 		mm.set_instance_transform(i, Transform3D(basis, positions[i]))
 		mm.set_instance_color(i, colors[i])
+
+
+## Beleuchtetes Material fuer Kugeln (Partikel, Gitterpunkte): Farbe pro Instanz.
+func _lit_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.5
+	mat.metallic = 0.0
+	return mat
 
 
 func _flat_material(color: Color, vertex_colors: bool) -> StandardMaterial3D:
