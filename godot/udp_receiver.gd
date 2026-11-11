@@ -1,17 +1,23 @@
 extends Node
 ## Empfaengt typisierte Simulationsframes per UDP (Port von udp/udpReceive.m).
 ##
-## magic(1) waehlt Header und Payload: S/V Feld (52 Byte Header), P Partikel
-## (28), C Zellularautomat (33). Alle Header-Felder sind little-endian und die
-## Daten spaltenweise (MATLAB-Reihenfolge) angeordnet.
-## Pro Frame wird `frame_received` ausgeloest. Payload:
+## Protokoll v2 (PROTOCOL.md, 2026-11-11): 44-Byte-Gemeinsamer-Header mit
+## Spatial Box (float32[6] [xmin xmax ymin ymax zmin zmax]) an Offset 20-43.
+## Typ-spezifische Daten beginnen ab Offset 44 (vorher 20).
+##
+## magic(1) waehlt Header und Payload: S/V Feld, P Partikel, C Zellularautomat.
+## Mehrere Magics koennen denselben Frame-ID haben; jedes Magic wird
+## unabhaengig verfolgt. Pro Frame wird `frame_received` ausgeloest.
+## Payload:
 ##   S/V: quantisierte uint8-Werte (Bereich info.vspan), V dequantisieren per vspan
-##   P:   float32-Bytes [N nCoords]
+##   P:   float32-Bytes [N nCoords], Positionen normalisiert 0..1
 ##   C:   bitgepackte Zustaende (info.bits Bit pro Zelle), der Shader entpackt
+## info.box = [xmin xmax ymin ymax zmin zmax] gibt den Simulationsraum an.
 
 signal frame_received(magic: String, info: Dictionary, payload: PackedByteArray)
 
-const BASE_HEADER := 20
+## Gemeinsamer Header: 44 Bytes (vorher 20; Box ab Offset 20 hinzugekommen).
+const BASE_HEADER := 44
 const MAX_FRAME_BYTES := 256 * 1024 * 1024
 const MAX_CHUNKS := 100000
 const MAX_RETIRED := 32
@@ -27,12 +33,11 @@ const MAX_PACKETS_PER_TICK := 4096
 var _udp := PacketPeerUDP.new()
 var _session_id: int = -1
 var _retired: Array[int] = []
-var _last_frame_id: int = -1
-var _frame_id: int = -1
-var _frame: Dictionary = {}
-var _chunks: Array = []
-var _got: int = 0
 var _queue: Array[Dictionary] = []
+## Per-Magic aktiver Frame: magic → {frame_id, hdr, chunks, got}
+var _active: Dictionary = {}
+## Per-Magic letzter abgeschlossener Frame-ID: magic → int
+var _completed_frame_id: Dictionary = {}
 
 # Statistik (vom Debug-Overlay gelesen)
 var listening: bool = false
@@ -125,7 +130,7 @@ func handle_packet(pkt: PackedByteArray) -> void:
 		bad_packets += 1
 		return
 
-	# Eine neue Session (Neustart der Simulation) verwirft den alten Zustand.
+	# Eine neue Session (Neustart der Simulation) verwirft den Zustand aller Magics.
 	if _session_id < 0 or sid != _session_id:
 		if _retired.has(sid):
 			return  # Spaetes Paket einer alten Session.
@@ -135,64 +140,69 @@ func handle_packet(pkt: PackedByteArray) -> void:
 				_retired.pop_front()
 		_session_id = sid
 		session_id = sid
-		_frame_id = -1
-		_last_frame_id = -1
-		_chunks = []
-		_got = 0
+		_active.clear()
+		_completed_frame_id.clear()
 		_queue.clear()
 
-	if _last_frame_id >= 0 and frame_id <= _last_frame_id:
-		return  # Altes Frame der aktuellen Session.
+	# Per-Magic Frame-Tracking: jedes Magic kann gleichzeitig einen eigenen
+	# aktiven Frame haben. Gleicher Frame-ID mit unterschiedlichem Magic ist erlaubt.
+	var last_id: int = _completed_frame_id.get(magic, -1)
+	if last_id >= 0 and frame_id <= last_id:
+		return  # Altes Frame fuer dieses Magic.
 
-	if _frame_id < 0 or frame_id > _frame_id:
+	var active: Dictionary = _active.get(magic, {})
+	if active.is_empty() or frame_id > active.frame_id:
 		var hdr := _read_header(pkt, magic)
 		# Allokationen gegen fehlerhaften Netzwerkverkehr begrenzen.
 		if hdr.is_empty() or hdr.required_bytes > MAX_FRAME_BYTES or count > hdr.required_bytes:
 			bad_packets += 1
 			return
-		if _frame_id >= 0:
+		if not active.is_empty():
 			dropped_frames += 1  # Unvollstaendiges Frame wurde ueberholt.
 		hdr["magic"] = magic
-		_frame = hdr
-		_frame_id = frame_id
-		_chunks = []
-		_chunks.resize(count)
-		_got = 0
-	elif frame_id < _frame_id or count != _chunks.size() or magic != _frame.magic:
+		var chunks := []
+		chunks.resize(count)
+		active = {"frame_id": frame_id, "hdr": hdr, "chunks": chunks, "got": 0}
+		_active[magic] = active
+	elif frame_id < active.frame_id or count != active.chunks.size():
 		return
 
-	if _chunks[index] == null:
-		_chunks[index] = pkt.slice(header_size)
-		_got += 1
-	if _got == _chunks.size():
-		_complete()
+	var chunks: Array = active.chunks
+	if chunks[index] == null:
+		chunks[index] = pkt.slice(header_size)
+		active.got += 1
+	if active.got == chunks.size():
+		_complete(magic)
 
 
-func _complete() -> void:
+func _complete(magic: String) -> void:
+	var active: Dictionary = _active[magic]
+	var frame_id: int = active.frame_id
+	var hdr: Dictionary = active.hdr
 	var bytes := PackedByteArray()
-	for c: PackedByteArray in _chunks:
+	for c: PackedByteArray in active.chunks:
 		bytes.append_array(c)
-	if bytes.size() == _frame.required_bytes:
-		var magic: String = _frame.magic
-		var dims: Array = _frame.dims
-		var payload := bytes
+	if bytes.size() == hdr.required_bytes:
 		var info := {
-			"magic": magic, "session_id": _session_id, "frame_id": _frame_id,
-			"dims": dims, "vspan": _frame.vspan, "nostates": _frame.nostates,
-			"bits": bits_per_state(_frame.nostates) if magic[0] == "C" else 0,
-			"packets": _chunks.size(),
+			"magic": magic,
+			"session_id": _session_id,
+			"frame_id": frame_id,
+			"dims": hdr.dims,
+			"vspan": hdr.vspan,
+			"nostates": hdr.nostates,
+			"box": hdr.box,
+			"bits": bits_per_state(hdr.nostates) if magic[0] == "C" else 0,
+			"packets": active.chunks.size(),
 		}
 		# Pro Magic bleibt nur das neueste Frame in der Warteschlange.
 		for i in range(_queue.size() - 1, -1, -1):
 			if _queue[i].magic == magic:
 				_queue.remove_at(i)
-		_queue.append({"magic": magic, "info": info, "payload": payload})
-		_last_frame_id = _frame_id
+		_queue.append({"magic": magic, "info": info, "payload": bytes})
+		_completed_frame_id[magic] = frame_id
 		last_magic = magic
-		last_frame_id = _frame_id
-	_frame_id = -1
-	_chunks = []
-	_got = 0
+		last_frame_id = frame_id
+	_active.erase(magic)
 
 
 # ---- Header (analog zu headerSizeOf/headerField/... in udpReceive.m) ------
@@ -200,11 +210,11 @@ func _complete() -> void:
 func _header_size(magic: String) -> int:
 	match magic[0]:
 		"S", "V":
-			return 52
+			return 76   # 44 Gemeinsam + 32 Typ (4x uint32 + 2x float64)
 		"P":
-			return 28
+			return 52   # 44 + 8 (2x uint32)
 		"C":
-			return 33
+			return 57   # 44 + 13 (3x uint32 + 1x uint8)
 	return 0
 
 
@@ -219,10 +229,19 @@ func _read_header(pkt: PackedByteArray, magic: String) -> Dictionary:
 	return {}
 
 
-## Feld: dims [ny nx nz nv] ab Byte 20, vspan [vmin vmax] ab Byte 36.
+## Liest die Spatial Box aus dem gemeinsamen Header (Offset 20, 6x float32 LE).
+## Gibt [xmin, xmax, ymin, ymax, zmin, zmax] zurueck; Default [0,1,0,1,0,1].
+func _read_box(pkt: PackedByteArray) -> Array:
+	var b := []
+	for i in 6:
+		b.append(pkt.decode_float(20 + 4 * i))
+	return b
+
+
+## Feld: dims [ny nx nz nv] ab Byte 44, vspan [vmin vmax] ab Byte 60.
 func header_field(pkt: PackedByteArray, magic: String) -> Dictionary:
 	var dims := _read_dims(pkt, 4)
-	var vspan := [pkt.decode_double(36), pkt.decode_double(44)]
+	var vspan := [pkt.decode_double(60), pkt.decode_double(68)]
 	if dims.min() < 1 or not is_finite(vspan[0]) or not is_finite(vspan[1]):
 		return {}
 	var components := 1
@@ -231,26 +250,29 @@ func header_field(pkt: PackedByteArray, magic: String) -> Dictionary:
 	if dims[3] != components or (magic[1] == "2" and dims[2] != 1):
 		return {}
 	return {"dims": dims, "vspan": vspan, "nostates": 0,
+			"box": _read_box(pkt),
 			"required_bytes": dims[0] * dims[1] * dims[2] * dims[3]}
 
 
-## Partikel: dims [nParticles nCoords] ab Byte 20.
+## Partikel: dims [nParticles nCoords] ab Byte 44.
 func header_particle(pkt: PackedByteArray) -> Dictionary:
 	var dims := _read_dims(pkt, 2)
 	if dims.min() < 1 or not [2, 3, 4, 6].has(dims[1]):
 		return {}
 	return {"dims": dims, "vspan": [], "nostates": 0,
+			"box": _read_box(pkt),
 			"required_bytes": dims[0] * dims[1] * 4}
 
 
-## Zellularautomat: dims [ny nx nz] ab Byte 20, nostates bei Byte 32.
+## Zellularautomat: dims [ny nx nz] ab Byte 44, nostates bei Byte 56.
 func header_cellular(pkt: PackedByteArray) -> Dictionary:
 	var dims := _read_dims(pkt, 3)
-	var nostates := pkt.decode_u8(32)
+	var nostates := pkt.decode_u8(56)
 	if dims.min() < 1 or nostates < 1:
 		return {}
 	var cells := _cell_count(dims)
 	return {"dims": dims, "vspan": [], "nostates": nostates,
+			"box": _read_box(pkt),
 			"required_bytes": ceili(cells * bits_per_state(nostates) / 8.0)}
 
 
