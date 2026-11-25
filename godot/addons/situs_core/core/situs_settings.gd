@@ -9,6 +9,7 @@ extends RefCounted
 ## "Override For…" → android wählen (Eintrag z. B. situs_core/network/server_ip.android).
 
 const SERVER_IP      := "situs_core/network/server_ip"
+const DISCOVERY      := "situs_core/network/discovery"
 const ROOM_WIDTH     := "situs_core/room/width_m"
 const ROOM_LENGTH    := "situs_core/room/length_m"
 const ROOM_ROTATION  := "situs_core/room/rotation_deg"
@@ -20,6 +21,7 @@ const JUMP_BUTTON    := "situs_core/jump/button"
 const JUMP_SHOW_BUTTONS := "situs_core/jump/show_button_names"
 
 const DEFAULT_SERVER_IP     := "127.0.0.1"
+const DEFAULT_DISCOVERY     := true
 const DEFAULT_ROOM_WIDTH    := 4.0
 const DEFAULT_ROOM_LENGTH   := 8.0
 const DEFAULT_ROOM_ROTATION := 0.0
@@ -33,6 +35,8 @@ const DEFAULT_JUMP_SHOW_BUTTONS := false
 ## Wird vom Plugin beim Aktivieren registriert, damit die Felder im Editor erscheinen.
 const DEFINITIONS := [
 	{"name": SERVER_IP, "type": TYPE_STRING, "default": DEFAULT_SERVER_IP,
+		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
+	{"name": DISCOVERY, "type": TYPE_BOOL, "default": DEFAULT_DISCOVERY,
 		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
 	{"name": ROOM_WIDTH, "type": TYPE_FLOAT, "default": DEFAULT_ROOM_WIDTH,
 		"hint": PROPERTY_HINT_RANGE, "hint_string": "0.5,100,0.1,or_greater,suffix:m"},
@@ -58,6 +62,11 @@ const DEFINITIONS := [
 ## IP-Adresse des Servers (Clients verbinden sich hierhin).
 static func get_server_ip() -> String:
 	return str(ProjectSettings.get_setting(SERVER_IP, DEFAULT_SERVER_IP))
+
+
+## true: Clients suchen den Server im LAN, die IP oben ist bevorzugt und Rückfall.
+static func get_discovery() -> bool:
+	return bool(ProjectSettings.get_setting(DISCOVERY, DEFAULT_DISCOVERY))
 
 
 ## Spielfläche in Metern: x = Breite (Weltachse x), y = Länge (Weltachse z).

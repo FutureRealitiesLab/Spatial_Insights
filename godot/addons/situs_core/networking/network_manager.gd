@@ -6,16 +6,20 @@ extends Node
 ## Schickt die eigene Position und Kopfbewegung an den Server;
 ## empfängt dieselben Daten von anderen Spielern und aktualisiert ihre Avatare.
 ## Der Server-PC leitet nur weiter — er hat keinen eigenen Avatar.
-## Server-IP: Project Settings → Situs Core → Network → Server Ip
-## (vor dem APK-Export auf die LAN-IP des Server-PCs setzen).
+## Clients suchen den Server im LAN (server_discovery.gd, Setting Network → Discovery).
+## Die feste IP (Network → Server Ip) wird bevorzugt, wenn sie antwortet, und dient als
+## Rückfall, wenn nichts gefunden wird.
 
 const SitusSettings := preload("res://addons/situs_core/core/situs_settings.gd")
+const ServerDiscovery := preload("res://addons/situs_core/networking/server_discovery.gd")
 
 const PORT: int = 7777
 const MAX_CLIENTS: int = 8
 
 ## Sekunden zwischen automatischen Verbindungsversuchen (Client-Modus).
 const RECONNECT_INTERVAL: float = 5.0
+## So lange sammelt der Client Antworten, bevor er einen Server wählt.
+const SEARCH_TIME: float = 2.0
 
 ## IP-Adresse des Servers, aus den Project Settings. Bei Änderung APK neu exportieren.
 var server_ip: String = SitusSettings.get_server_ip()
@@ -26,6 +30,13 @@ var client_connected_flag: bool = false
 ## Laufende Verbindungsversuche (öffentlich – NetDiag liest es)
 var reconnect_attempts: int = 0
 
+## true während der Client nach einem Server sucht (für die Anzeige)
+var searching: bool = false
+
+var _discovery: Node = null
+## true = der Server wird bei jedem Verbindungsversuch neu gesucht
+var _auto: bool = false
+var _search_timer: float = 0.0
 var _peer: ENetMultiplayerPeer = null
 var _is_client: bool = false
 var _reconnect_pending: bool = false
@@ -35,6 +46,9 @@ var _client_signals_connected: bool = false
 
 func _ready() -> void:
 	print("[NetworkManager] Server-IP: ", server_ip)
+	_discovery = ServerDiscovery.new()
+	add_child(_discovery)
+	_discovery.server_found.connect(func(ip: String, _info: Dictionary) -> void: server_found.emit(ip))
 
 # ── Signale (von world.gd und anderen abonniert) ────────────────
 signal player_joined(peer_id: int)
@@ -43,6 +57,8 @@ signal client_connected()
 ## Wird emittiert wenn die Verbindung zum Server verloren geht.
 ## SceneManager räumt daraufhin Remote-Avatare auf.
 signal client_disconnected()
+## Die Suche hat einen Server gefunden (siehe search_servers()).
+signal server_found(ip: String)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -50,6 +66,12 @@ signal client_disconnected()
 # ══════════════════════════════════════════════════════════════════
 
 func _process(delta: float) -> void:
+	if searching:
+		_search_timer -= delta
+		# Antwortet die feste IP, muss nicht weiter gewartet werden.
+		if _search_timer <= 0.0 or _discovery.servers.has(SitusSettings.get_server_ip()):
+			_finish_search()
+		return
 	if not _reconnect_pending or not _is_client or client_connected_flag:
 		return
 	_reconnect_timer -= delta
@@ -57,9 +79,8 @@ func _process(delta: float) -> void:
 		_reconnect_pending = false
 		_reconnect_timer = 0.0
 		reconnect_attempts += 1
-		print("[NetworkManager] Verbindungsversuch %d zu %s:%d …" % [
-			reconnect_attempts, server_ip, PORT])
-		_do_connect()
+		print("[NetworkManager] Verbindungsversuch %d …" % reconnect_attempts)
+		_attempt()
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -77,9 +98,14 @@ func start_server() -> void:
 	multiplayer.multiplayer_peer = _peer
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	if GameState.local_only:
+		_discovery.stop()
+	else:
+		_discovery.start_responding(PORT)
 	print("[NetworkManager] Server läuft auf Port %d%s" % [PORT, " (nur lokal)" if GameState.local_only else ""])
 
 
+## Ohne target_ip sucht der Client den Server im LAN (falls das Setting an ist).
 func start_client(target_ip: String = "") -> void:
 	if not target_ip.is_empty():
 		server_ip = target_ip
@@ -87,6 +113,43 @@ func start_client(target_ip: String = "") -> void:
 	_reconnect_pending = false
 	_reconnect_timer = 0.0
 	reconnect_attempts = 1
+	_auto = target_ip.is_empty() and SitusSettings.get_discovery()
+	_discovery.stop()
+	_attempt()
+
+
+## Nur suchen, ohne zu verbinden (Startmenü). Gefundene Server melden sich über server_found.
+func search_servers() -> void:
+	_discovery.start_searching()
+
+
+## Bisher gefundene Server: IP → {name, port, project}.
+func found_servers() -> Dictionary:
+	return _discovery.servers
+
+
+func _attempt() -> void:
+	if _auto:
+		searching = true
+		_search_timer = SEARCH_TIME
+		_discovery.start_searching()
+	else:
+		_do_connect()
+
+
+## Wählt aus den Antworten: die feste IP, sonst den ersten Server, sonst die feste IP als Rückfall.
+func _finish_search() -> void:
+	searching = false
+	var found: Dictionary = _discovery.servers
+	var configured := SitusSettings.get_server_ip()
+	server_ip = configured
+	if not found.is_empty() and not found.has(configured):
+		var ips: Array = found.keys()
+		ips.sort()
+		server_ip = ips[0]
+	if found.is_empty():
+		print("[NetworkManager] Kein Server gefunden, versuche feste IP ", configured)
+	_discovery.stop()
 	_do_connect()
 
 
