@@ -1,4 +1,19 @@
-# Spatial Insights: MATLAB → Godot 4 per UDP
+# Spatial Insights
+
+*Simulationen gemeinsam begehen: Co-Located Multiuser VR für Wissenschaftskommunikation und epistemische Datenexploration.*
+
+## Worum es geht
+
+Spatial Insights macht Simulationsergebnisse im Raum erlebbar. Eine Simulation läuft in MATLAB und überträgt ihre Ergebnisse in Echtzeit an bis zu acht VR-Brillen (HTC Vive Focus Vision), die sich im selben physischen Raum befinden (co-located). Alle sehen dieselben Daten, können sich darin bewegen, aufeinander zeigen und miteinander sprechen.
+
+- **Wofür:** Forschung, Lehre sowie Vermittlung und Wissenschaftskommunikation. Das Projekt fragt, wie sich Wahrnehmung und Erkenntnis verändern, wenn mehrere Personen gemeinsam in einem geteilten Datenraum arbeiten, im Vergleich zu Einzelnutzer-VR und Bildschirmdarstellung.
+- **Wie:** MATLAB sendet per UDP an einen Server (Godot 4 mit Situs Core), der die Frames an alle Brillen verteilt. Studierende schreiben nur ihre Simulationsschleife und rufen `udpSend` auf.
+- **Wer:** Prof. Pablo Dornhege (Projektleitung), Dr.-Ing. Stephan Kusche (Teilprojektleitung), Mariam Rafehi (Projektmitarbeit). Das Projekt läuft an der HTW Berlin im Immersive Technologies Hub, 01.10.2026 bis 31.03.2027 ([Eintrag im Forschungskatalog](https://www.htw-berlin.de/forschung/online-forschungskatalog/projekte/projekt?eid=3971)).
+- **Stand:** funktionsfähiger Prototyp. Im Januar 2027 folgt ein Workshop mit Kolleg:innen der TU Berlin zur Vorstellung und Evaluation.
+
+Die Details zu Installation, Protokoll und Bedienung stehen weiter unten.
+
+## Technischer Überblick
 
 Echtzeit-Kopplung: MATLAB berechnet zeitveränderliche Felder, Partikel oder Zellularautomaten und sendet sie per UDP an Godot 4. Godot stellt sie in einem Raum von 4 × 8 m dar (2D-Daten auf dem Boden, 3D-Daten in einer 2 m hohen Box) (Bild, Höhenfläche, Schnitte, Volumen, Pfeile, Partikel, Automat auf Ebene/Kugel/Torus). Langfristiges Ziel: VR-Simulator (siehe [docs/plan.md](docs/plan.md)).
 
@@ -53,24 +68,24 @@ Zwei Rechner: `address` auf die IPv4-Adresse des Godot-Rechners setzen und dort 
 
 | `magic` | Darstellung | MATLAB-Eingabe |
 |---|---|---|
-| `S2s<m>` / `C2s<m>` | Skalarfeld bzw. Automat, `m`: 0 Ebene, 1 HÃ¶henflÃ¤che, 2 Kugel, 3 Torus | `[ny nx]` |
+| `S2s<m>` / `C2s<m>` | Skalarfeld bzw. Automat, `m`: 0 Ebene, 1 Höhenfläche, 2 Kugel, 3 Torus | `[ny nx]` |
 | `S3s<n>` / `C3s<n>` | `n` xy-Schnitte (`0`: drei Mittelschnitte) | `[ny nx nz]` |
 | `S3v<a>` / `C3v<a>` | Volumen (Raymarching), `a`: 0 Standard, 1..9 Deckkraft 0,1..0,9 | `[ny nx nz]` |
-| `V2p<k>` / `V3p<k>` | Gitterpunkte, um den Vektor verschoben (`k`=1 autoskaliert, 0 OriginallÃ¤nge) | `[ny nx 1 2]` / `[ny nx nz 3]` |
-| `V2q<c>` / `V3q<c>` | Pfeile mit exakter LÃ¤nge (`c`=0 Farbe nach Betrag, 1..9 feste Farbe) | wie `V2p` |
+| `V2p<k>` / `V3p<k>` | Gitterpunkte, um den Vektor verschoben (`k`=1 autoskaliert, 0 Originallänge) | `[ny nx 1 2]` / `[ny nx nz 3]` |
+| `V2q<c>` / `V3q<c>` | Pfeile mit exakter Länge (`c`=0 Farbe nach Betrag, 1..9 feste Farbe) | wie `V2p` |
 | `P2p<c>` / `P3p<c>` | Partikel (`c`=0 Farbe nach Geschwindigkeit, 1..9 feste Farbe) | `[N nd]` oder `[N 2*nd]` mit Geschwindigkeit |
-| `P2q<c>` / `P3q<c>` | Partikelvektoren (auch StraÃŸen), Vektor mit Boxausdehnung skaliert | `[N 2*nd]` |
+| `P2q<c>` / `P3q<c>` | Partikelvektoren (auch Straßen), Vektor mit Boxausdehnung skaliert | `[N 2*nd]` |
 | `T...` | reserviert (Verkehr) | nicht umgesetzt |
 
 Wichtig:
 - **Achsen:** Dimension 1 = y (`ny`), Dimension 2 = x (`nx`), Dimension 3 = z, wie bei MATLAB-`imagesc`. Die Daten werden spaltenweise (`data(:)`) gesendet.
-- **Wertebereich:** `vspan=[vmin vmax]` gilt fÃ¼r alle S/V-Komponenten. Die Werte werden abgeschnitten und auf 0..255 quantisiert. Partikel gehen unquantisiert als `float32`, Positionen normiert auf 0..1. Automaten werden mit 1, 2, 4 oder 8 Bit pro Zustand gepackt (`nostates`).
-- **Ebenen:** Das vollstÃ¤ndige Magic ist der EbenenschlÃ¼ssel, jedes Magic ergibt eine eigene Ebene. Mehrere Magics dÃ¼rfen dieselbe Frame-ID haben, jedes wird getrennt verfolgt. Ein Magic mit anderem 4. Byte (z. B. `S3v2` statt `S3v5`) ist eine andere Ebene.
-- **Spatial Box:** `udpOpen(box=[xmin xmax ymin ymax zmin zmax])` (Standard `[0 8 0 4 0 2]`, Meter) legt fest, wo die Ebene im Raum liegt. Die Box des ersten Frames eines Magics gilt fÃ¼r die ganze Session. 2D-Daten liegen bei `zmin`, HÃ¶henflÃ¤chen reichen von `zmin` bis `zmax`, Kugel und Torus sitzen in der Boxmitte mit dem Radius der kleinsten Kante. Eine Verzerrung gibt es nicht, die Daten fÃ¼llen genau die Box. Der Absender muss die Box in den Raum legen.
-- **Raum und Ausrichtung:** Das Betrachtervolumen (`box_size` an der Node `View`) ist 8 m (MATLAB-x) Ã— 4 m (MATLAB-y) Ã— 2 m (MATLAB-z), MATLAB-z zeigt nach oben. Es wird in `simulation_scene.gd` aus den Situs-Settings gesetzt (lange Seite = x). `room_rotation_deg` an `View` (Situs-Szene: 90Â°) legt die lange x-Seite entlang der Godot-z-Achse, um zum echten Raum auszurichten. SpÃ¤ter soll das serverseitig einstellbar sein.
+- **Wertebereich:** `vspan=[vmin vmax]` gilt für alle S/V-Komponenten. Die Werte werden abgeschnitten und auf 0..255 quantisiert. Partikel gehen unquantisiert als `float32`, Positionen normiert auf 0..1. Automaten werden mit 1, 2, 4 oder 8 Bit pro Zustand gepackt (`nostates`).
+- **Ebenen:** Das vollständige Magic ist der Ebenenschlüssel, jedes Magic ergibt eine eigene Ebene. Mehrere Magics dürfen dieselbe Frame-ID haben, jedes wird getrennt verfolgt. Ein Magic mit anderem 4. Byte (z. B. `S3v2` statt `S3v5`) ist eine andere Ebene.
+- **Spatial Box:** `udpOpen(box=[xmin xmax ymin ymax zmin zmax])` (Standard `[0 8 0 4 0 2]`, Meter) legt fest, wo die Ebene im Raum liegt. Die Box des ersten Frames eines Magics gilt für die ganze Session. 2D-Daten liegen bei `zmin`, Höhenflächen reichen von `zmin` bis `zmax`, Kugel und Torus sitzen in der Boxmitte mit dem Radius der kleinsten Kante. Eine Verzerrung gibt es nicht, die Daten füllen genau die Box. Der Absender muss die Box in den Raum legen.
+- **Raum und Ausrichtung:** Das Betrachtervolumen (`box_size` an der Node `View`) ist 8 m (MATLAB-x) × 4 m (MATLAB-y) × 2 m (MATLAB-z), MATLAB-z zeigt nach oben. Es wird in `simulation_scene.gd` aus den Situs-Settings gesetzt (lange Seite = x). `room_rotation_deg` an `View` (Situs-Szene: 90°) legt die lange x-Seite entlang der Godot-z-Achse, um zum echten Raum auszurichten. Später soll das serverseitig einstellbar sein.
 ## Paketformat (Kurzfassung)
 
-Jedes Datagramm beginnt mit 44 Byte (little-endian): Magic (4 Byte ASCII), Session-ID, Frame-ID, Chunk-Index und Chunk-Anzahl (je uint32) sowie die Spatial Box (6 Ã— float32). Danach folgt je nach `magic(1)` ein Zusatz-Header (S/V: 76 Byte gesamt, P: 52, C: 57) und die Nutzdaten. Das vollständige Format steht in `PROTOCOL.md` im MATLAB-Ordner `udp/` (HTW-Cloud).
+Jedes Datagramm beginnt mit 44 Byte (little-endian): Magic (4 Byte ASCII), Session-ID, Frame-ID, Chunk-Index und Chunk-Anzahl (je uint32) sowie die Spatial Box (6 × float32). Danach folgt je nach `magic(1)` ein Zusatz-Header (S/V: 76 Byte gesamt, P: 52, C: 57) und die Nutzdaten. Das vollständige Format steht in `PROTOCOL.md` im MATLAB-Ordner `udp/` (HTW-Cloud).
 
 - **Session-ID:** `udpOpen` erzeugt pro Lauf eine neue Session-ID. Godot verwirft bei einer neuen ID den alten Zustand und ignoriert späte Pakete der letzten 32 alten Sessions. Eine neu gestartete Simulation wird daher sofort angezeigt, auch wenn die Frame-ID wieder bei 0 beginnt.
 - **Frame-ID:** Innerhalb einer Session werden nur Frames mit einer größeren ID als der letzten fertigen angenommen. Unvollständige Frames werden verworfen (Overlay: "Verworfen"), sobald ein neueres kommt.
