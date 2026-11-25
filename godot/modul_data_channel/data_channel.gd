@@ -11,8 +11,8 @@ extends Node
 ##
 ## Eigenschaften:
 ##   • Eigener ENet-Transferkanal (TRANSFER_CHANNEL): blockiert keine Avatar-Posen.
-##   • Ack-Flusskontrolle je Client und Kanal: ein Frame ist unterwegs, der nächste
-##     geht erst nach dem Ack. Bis dahin zählt nur der neueste ("latest wins").
+##   • Ack-Flusskontrolle je Client und Kanal: höchstens `frames_in_flight` Frames sind
+##     unbestätigt unterwegs. Ist das Fenster voll, zählt nur der neueste ("latest wins").
 ##   • Late Join: Neue Clients bekommen den letzten Frame jedes Kanals.
 ##   • Optional zstd-Kompression auf dem Server (publish(..., true)).
 ##
@@ -45,10 +45,14 @@ var client_stats := {
 	"last_seq": -1,
 }
 
+## Server: so viele Frames je Client und Kanal dürfen ohne Ack unterwegs sein.
+## 1 = streng nacheinander; 2 gleicht lange Ack-Zeiten aus.
+var frames_in_flight: int = 2
+
 var _seq: int = 0
 ## channel → Frame (letzter veröffentlichter Stand, für Late Join und Nachsenden)
 var _latest: Dictionary = {}
-## peer_id → { channel → { "inflight": bool, "sent_ms": int, "seq": int, "pending": bool } }
+## peer_id → { channel → { "inflight": { seq → sent_ms }, "pending": bool } }
 var _peers: Dictionary = {}
 ## peer_id → geglaettete Ack-Zeit in ms (gleitender Mittelwert)
 var _ack_ms: Dictionary = {}
@@ -99,13 +103,18 @@ func _peer_state(peer_id: int, channel: String) -> Dictionary:
 	if not _peers.has(peer_id):
 		_peers[peer_id] = {}
 	if not _peers[peer_id].has(channel):
-		_peers[peer_id][channel] = {"inflight": false, "sent_ms": 0, "seq": 0, "pending": false}
+		_peers[peer_id][channel] = {"inflight": {}, "pending": false}
 	return _peers[peer_id][channel]
 
 
 func _offer(peer_id: int, channel: String) -> void:
 	var state := _peer_state(peer_id, channel)
-	if state.inflight and Time.get_ticks_msec() - state.sent_ms < ACK_TIMEOUT_MS:
+	# Frames ohne Ack nach ACK_TIMEOUT_MS geben ihren Platz im Fenster frei.
+	var now := Time.get_ticks_msec()
+	for seq: int in state.inflight.keys():
+		if now - state.inflight[seq] >= ACK_TIMEOUT_MS:
+			state.inflight.erase(seq)
+	if state.inflight.size() >= maxi(1, frames_in_flight):
 		if state.pending:
 			stats.skipped += 1
 		state.pending = true
@@ -115,10 +124,8 @@ func _offer(peer_id: int, channel: String) -> void:
 
 func _send(peer_id: int, channel: String, state: Dictionary) -> void:
 	var frame: Dictionary = _latest[channel]
-	state.inflight = true
 	state.pending = false
-	state.sent_ms = Time.get_ticks_msec()
-	state.seq = frame.seq
+	state.inflight[frame.seq] = Time.get_ticks_msec()
 	var bytes: PackedByteArray = frame.bytes
 	_rpc_frame.rpc_id(peer_id, channel, frame.seq, frame.time_ms, frame.meta,
 			frame.compressed, frame.raw_size, bytes)
@@ -151,14 +158,17 @@ func _rpc_ack(channel: String, seq: int) -> void:
 		return
 	var peer_id := multiplayer.get_remote_sender_id()
 	var state := _peer_state(peer_id, channel)
-	if seq < state.seq:
-		return
+	if not state.inflight.has(seq):
+		return  # veraltet oder schon abgelaufen
 	# Ack-Zeit: Senden bis Bestaetigung = Netzlaufzeit hin und zurueck plus Verarbeitung auf dem
 	# Client (Entpacken, Textur-Update), weil der Client erst nach dem Anzeigen bestaetigt.
-	if seq == state.seq and state.inflight:
-		var ms := float(Time.get_ticks_msec() - state.sent_ms)
-		_ack_ms[peer_id] = ms if not _ack_ms.has(peer_id) else lerpf(_ack_ms[peer_id], ms, 0.2)
-	state.inflight = false
+	# Mit mehr als einem Frame unterwegs gehoert auch das Warten hinter dem vorigen dazu.
+	var ms := float(Time.get_ticks_msec() - state.inflight[seq])
+	_ack_ms[peer_id] = ms if not _ack_ms.has(peer_id) else lerpf(_ack_ms[peer_id], ms, 0.2)
+	# Der Kanal ist geordnet: auch aeltere Eintraege sind damit erledigt.
+	for older: int in state.inflight.keys():
+		if older <= seq:
+			state.inflight.erase(older)
 	if state.pending and _latest.has(channel):
 		_send(peer_id, channel, state)
 

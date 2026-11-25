@@ -122,6 +122,11 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 - [ ] Toggle: Der Boost-Sprung ist erst im Spiel aktivierbar (Details folgen, Pablo).
 - [ ] Direktmodus auf der Brille testen: Trigger ohne Server, IP-Hinweis, MATLAB an die Brillen-IP.
 
+**Messung mit Kabel, 7 Brillen (2026-11-25):** deutlich besser. MATLAB liefert 16,9 Frames/s (2 Magics, 117 KB), an die Clients gehen 15,8 Frames/s je Brille (etwa 93 %), 3,4 MB/s komprimiert. Ack 16 bis 66 ms, ein Ausreißer mit 237 ms (.146). Danach eingebaut: zwei Frames gleichzeitig je Client (`sim/frames_in_flight`).
+
+- [ ] Mit zwei Frames in Flight neu messen (ersetzt, Frames/s, ack).
+- [ ] MATLAB messen (`myUpdate` und `udpSend`), die Quelle begrenzt die Rate.
+
 ### 0b. Plan nächste Session: Datenverteilung (Stand 2026-11-11)
 
 **Befund aus dem Test mit 7 Brillen (GoL):** Bewegung und Rendering laufen flüssig, aber die Simulation ruckelt, weil zu wenige Frames ankommen. Paketverlust (ENet-Wert im Server-Fenster) teilweise über 12 %. Der Server hing dabei selbst per WLAN am Router, jedes Frame lief also zweimal durch die Luft. **Wichtig ist Geschwindigkeit, nicht Vollständigkeit:** Verlorene Frames sind egal, langsame Übertragung ist das Problem.

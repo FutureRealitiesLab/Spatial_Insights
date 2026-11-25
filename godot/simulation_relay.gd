@@ -83,6 +83,7 @@ func attach() -> void:
 	if GameState.mode == GameState.Mode.SERVER and not solo:
 		role = Role.SERVER
 		_start_udp()
+		DataChannel.frames_in_flight = int(ProjectSettings.get_setting("sim/frames_in_flight", 2))
 		# Jeder neue (oder wiederverbundene) Client erfährt Freeze-Zustand und Ansicht.
 		multiplayer.peer_connected.connect(func(id: int) -> void:
 			_rpc_frozen.rpc_id(id, frozen)

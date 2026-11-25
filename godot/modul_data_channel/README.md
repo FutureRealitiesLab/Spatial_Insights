@@ -23,7 +23,7 @@ DataChannel.received.connect(func(channel, meta, bytes, server_time_ms): ...)
 |-------|-----------|
 | Eigener Kanal | `TRANSFER_CHANNEL = 1`, getrennt vom normalen RPC-Verkehr (Avatar-Posen laufen auf Kanal 0) |
 | Zuverlässigkeit | `reliable`, damit Frames vollständig ankommen. Die Flusskontrolle verhindert einen Rückstau |
-| Flusskontrolle | Je Client und Kanal ist ein Frame unterwegs. Der nächste geht erst nach dem Ack. Bis dahin gewinnt der neueste Frame, ältere werden ersetzt (`stats.skipped`) |
+| Flusskontrolle | Je Client und Kanal sind höchstens `frames_in_flight` Frames (Standard 2, Projekt-Setting `sim/frames_in_flight`) ohne Ack unterwegs. Ist das Fenster voll, gewinnt der neueste Frame, ältere werden ersetzt (`stats.skipped`) |
 | Ack verloren | Nach `ACK_TIMEOUT_MS` (1,5 s) darf erneut gesendet werden |
 | Late Join | Ein neuer Client bekommt den letzten Frame jedes Kanals |
 | Kompression | Optional zstd auf dem Server, der Client entpackt automatisch |
