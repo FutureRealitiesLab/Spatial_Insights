@@ -202,6 +202,7 @@ func _test_scene() -> void:
 	var plot: Node3D = view.get_parent()
 	var corner: Vector3 = plot.transform * Vector3(view.box_size.x, view.box_size.y, view.box_size.z)
 	_check(corner.is_equal_approx(Vector3(-2.0, 3.0, -4.0)), "plot corner %s" % corner)
+	_test_volume_and_detail(view)
 	_test_absolute_particles(view)
 	scene.free()
 
@@ -223,3 +224,18 @@ func _test_absolute_particles(view: Node) -> void:
 			"dims": [1, 6], "vspan": [], "nostates": 0}, arrow.to_byte_array())
 	var end: Vector3 = view.layers["P3q2"].points[0] + view.layers["P3q2"].vectors[0]
 	_check(end.is_equal_approx(Vector3(5.0, 1.5, 1.75)), "P3q2 end %s" % end)
+
+## Volumen fuellt die Box (Einheitswuerfel, Groesse per scale), viele Kugeln werden groeber.
+func _test_volume_and_detail(view: Node) -> void:
+	var volume: MeshInstance3D = view.layers["S3v0"].volume
+	_check((volume.mesh as BoxMesh).size == Vector3.ONE, "volume mesh size")
+	_check(volume.scale.is_equal_approx(view.layers["S3v0"].e), "volume scale %s" % volume.scale)
+	var info := {"session_id": 55, "box": [0.0, 8.0, 0.0, 4.0, 0.0, 3.0], "dims": [100, 3], "vspan": [], "nostates": 0}
+	var data := PackedFloat32Array()
+	data.resize(300)
+	view.show_frame("P3p1", info, data.to_byte_array())
+	_check((view.layers["P3p1"].ball as SphereMesh).radial_segments == 16, "detail few")
+	info.dims = [5000, 3]
+	data.resize(15000)
+	view.show_frame("P3p1", info, data.to_byte_array())
+	_check((view.layers["P3p1"].ball as SphereMesh).radial_segments == 7, "detail many")

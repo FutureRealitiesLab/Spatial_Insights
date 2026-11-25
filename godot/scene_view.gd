@@ -50,6 +50,8 @@ const SPECIES_COLORS := [
 const VECTOR_POINT_COLOR := Color(0.12, 0.4, 0.8)
 const MAX_SURFACE_SEGMENTS := 255
 const PACKED_TEX_WIDTH := 2048
+## Detail der Kugeln: [bis Anzahl, radial_segments, rings], etwa 288 / 120 / 56 / 30 Dreiecke.
+const SPHERE_DETAIL := [[500, 16, 8], [2000, 10, 5], [8000, 7, 3], [0x7fffffff, 5, 2]]
 
 var layers: Dictionary = {}
 ## Rahmen der Spatial Boxes sichtbar (der Server gibt das vor, siehe SimulationRelay).
@@ -389,12 +391,15 @@ func _volume(layer: Dictionary, rebuild: bool, magic: String, dims: Array, paylo
 	mat.set_shader_parameter("colormap", colormap)
 	# Standard density_scale 4.0 entspricht alpha 0.25.
 	mat.set_shader_parameter("density_scale", 16.0 * alpha)
+	# Der Shader rechnet im Wuerfel -0.5..0.5, deshalb Einheitswuerfel und Groesse per scale.
 	var box := BoxMesh.new()
-	box.size = ext
+	box.size = Vector3.ONE
 	var mi := MeshInstance3D.new()
 	mi.mesh = box
 	mi.position = off + ext / 2.0
+	mi.scale = ext
 	mi.material_override = mat
+	layer.volume = mi
 	layer.root.add_child(mi)
 	layer.mats.append(mat)
 	return true
@@ -528,21 +533,40 @@ func _set_points(layer: Dictionary, rebuild: bool, points: PackedVector3Array,
 		var ball := SphereMesh.new()
 		ball.radius = radius
 		ball.height = 2.0 * radius
-		ball.radial_segments = 16
-		ball.rings = 8
 		created.mesh = ball
+		layer.ball = ball
 		var mi := MultiMeshInstance3D.new()
 		mi.multimesh = created
 		mi.material_override = _lit_material()
 		layer.root.add_child(mi)
 		layer.spheres = created
-	layer.points = points   # fuer den Selbsttest (headless speichert MultiMesh nichts)
+	layer.points = points   # fuer Detailstufe und Selbsttest (headless speichert MultiMesh nichts)
+	_update_sphere_detail()
 	var spheres: MultiMesh = layer.spheres
 	if spheres.instance_count != points.size():
 		spheres.instance_count = points.size()
 	for i in points.size():
 		spheres.set_instance_transform(i, Transform3D(Basis.IDENTITY, points[i]))
 		spheres.set_instance_color(i, colors[i])
+
+
+## Kugeln groeber, je mehr es insgesamt sind (alle Ebenen zusammen), damit die Brille mithaelt.
+func _update_sphere_detail() -> void:
+	var total := 0
+	for layer: Dictionary in layers.values():
+		if layer.has("ball"):
+			total += (layer.get("points", PackedVector3Array()) as PackedVector3Array).size()
+	var detail: Array = SPHERE_DETAIL[SPHERE_DETAIL.size() - 1]
+	for step: Array in SPHERE_DETAIL:
+		if total <= step[0]:
+			detail = step
+			break
+	for layer: Dictionary in layers.values():
+		if layer.has("ball"):
+			var ball: SphereMesh = layer.ball
+			if ball.radial_segments != detail[1] or ball.rings != detail[2]:
+				ball.radial_segments = detail[1]
+				ball.rings = detail[2]
 
 
 ## Pfeile mit Laenge |vector| (Einheit der Box), gefaerbt nach `colors`.

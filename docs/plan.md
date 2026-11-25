@@ -119,7 +119,7 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 
 ### 0a. Sprung freischaltbar (2026-11-25)
 
-- [ ] Toggle: Der Boost-Sprung ist erst im Spiel aktivierbar (Details folgen, Pablo).
+- [x] Toggle: Super Jump per Long-Press freischalten, HUD am linken Controller (Situs Core). Auf der Brille testen.
 - [ ] Direktmodus auf der Brille testen: Trigger ohne Server, IP-Hinweis, MATLAB an die Brillen-IP.
 
 **Messung mit Kabel, 7 Brillen (2026-11-25):** deutlich besser. MATLAB liefert 16,9 Frames/s (2 Magics, 117 KB), an die Clients gehen 15,8 Frames/s je Brille (etwa 93 %), 3,4 MB/s komprimiert. Ack 16 bis 66 ms, ein Ausreißer mit 237 ms (.146). Danach eingebaut: zwei Frames gleichzeitig je Client (`sim/frames_in_flight`).
