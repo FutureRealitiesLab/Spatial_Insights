@@ -311,8 +311,8 @@ func _update_server_hud() -> void:
 	var enet := multiplayer.multiplayer_peer as ENetMultiplayerPeer
 	var channel := get_node_or_null("/root/DataChannel")   # optionales Modul modul_data_channel
 	for pid: int in peers:
-		var hex: String = "#%s" % GameState.get_color_for_id(pid).to_html(false).to_upper()
-		var info := "  #%d  %s" % [pid, hex]
+		# Spielerfarbe als kleiner Farbblock (Hintergrund von Leerzeichen, braucht kein Sonderzeichen)
+		var info := "  [bgcolor=#%s]     [/bgcolor]  #%d" % [GameState.get_color_for_id(pid).to_html(false), pid]
 		var peer: ENetPacketPeer = enet.get_peer(pid) if enet != null else null
 		if peer != null:
 			var loss: float = peer.get_statistic(ENetPacketPeer.PEER_PACKET_LOSS) / 65536.0 * 100.0
