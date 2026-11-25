@@ -13,6 +13,8 @@ Spatial Insights macht Simulationsergebnisse im Raum erlebbar. Eine Simulation l
 
 Die Details zu Installation, Protokoll und Bedienung stehen weiter unten.
 
+<img width="1522" height="1451" alt="Screenshot 2026-11-25 140201" src="https://github.com/user-attachments/assets/29e0da9f-9cbc-4d76-b64f-486ce8b50941" />
+
 ## Technischer Überblick
 
 Echtzeit-Kopplung: MATLAB berechnet zeitveränderliche Felder, Partikel oder Zellularautomaten und sendet sie per UDP an Godot 4. Godot stellt sie in einem Raum von 4 × 8 m dar (2D-Daten auf dem Boden, 3D-Daten in einer 2 m hohen Box) (Bild, Höhenfläche, Schnitte, Volumen, Pfeile, Partikel, Automat auf Ebene/Kugel/Torus). Langfristiges Ziel: VR-Simulator (siehe [docs/plan.md](docs/plan.md)).
@@ -44,8 +46,6 @@ docs/
 tools/
   setup_android.ps1  richtet einen Rechner für den Android-Export ein
 ```
-
-<img width="1522" height="1451" alt="Screenshot 2026-11-25 140201" src="https://github.com/user-attachments/assets/29e0da9f-9cbc-4d76-b64f-486ce8b50941" />
 
 
 ## Schnellstart
