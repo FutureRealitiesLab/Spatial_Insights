@@ -11,6 +11,8 @@
 # ════════════════════════════════════════════════════════════════
 extends Label3D
 
+const SitusSettings := preload("res://addons/situs_core/core/situs_settings.gd")
+
 const UPDATE_INTERVAL: float = 1.0
 
 var _timer: float = 0.0
@@ -51,9 +53,9 @@ func _update() -> void:
 
 	if GameState.mode == GameState.Mode.FPS:
 		lines.append("")
-		lines.append("On PC: press Q/E for standalone mode")
+		lines.append("On PC: press Q/E for %s" % SitusSettings.get_standalone_label())
 	elif GameState.mode == GameState.Mode.XR:
 		lines.append("")
-		lines.append("VR: press any button for standalone mode")
+		lines.append("VR: press trigger for %s" % SitusSettings.get_standalone_label())
 
 	text = "\n".join(lines)

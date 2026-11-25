@@ -65,8 +65,12 @@ var self_avatar: Node = null
 ## Wird direkt von networking/network_manager.gd gelesen.
 var remote_avatars: Dictionary = {}
 
-## Standalone-Modus: Szenen laufen lokal durch ohne Server (aktiviert via A-Taste am Headset)
+## Standalone-Modus: Szenen laufen lokal durch ohne Server (aktiviert via Trigger am Headset)
 var standalone_mode: bool = false
+
+## Standalone wurde ein- oder ausgeschaltet (aus, sobald doch ein Server verbunden ist).
+## Projekte können hier z. B. eine eigene Datenquelle starten.
+signal standalone_changed(active: bool)
 
 signal scene_changed(index: int, scene_name: String)
 
@@ -162,10 +166,20 @@ func retreat_scene() -> void:
 
 
 ## Aktiviert den lokalen Standalone-Modus (kein Server nötig).
-## Wird von xr_player.gd via A-Taste und fps_player.gd via Q/E ausgelöst.
+## Wird von xr_player.gd via Trigger und fps_player.gd via Q/E ausgelöst.
 func activate_standalone() -> void:
 	standalone_mode = true
 	print("[SceneManager] Standalone-Modus aktiviert.")
+	standalone_changed.emit(true)
+
+
+## Beendet den Standalone-Modus (der Server hat Vorrang, sobald er verbunden ist).
+func deactivate_standalone() -> void:
+	if not standalone_mode:
+		return
+	standalone_mode = false
+	print("[SceneManager] Standalone-Modus beendet.")
+	standalone_changed.emit(false)
 
 
 ## Aufgerufen von main.gd nach Fade-Out.
