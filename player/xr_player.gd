@@ -59,10 +59,6 @@ var _hold_hand: int = -1            # Hand, deren Sprungtaste gerade gehalten wi
 var _hold_time: float = 0.0
 var _frame_time: float = 0.0        # geglättete Frame-Dauer für die FPS-Anzeige
 var _fps_timer: float = 0.0
-var _aux_hand: int = -1             # Hand, deren A/X-Taste gerade berührt wird (-1 = keine)
-var _aux_time: float = 0.0
-## A/X wurde kurz getippt (hand_index 0 links, 1 rechts). Projekte können das belegen.
-signal aux_tapped(hand_index: int)
 var _hand_color: Color = Color(0, 0, 0, 0)
 var _stick_l: Vector2 = Vector2.ZERO
 var _stick_r: Vector2 = Vector2.ZERO
@@ -85,13 +81,9 @@ func _ready() -> void:
 	if has_node("LeftHand"):
 		$LeftHand.button_released.connect(_on_hand_released.bind(0))
 		$LeftHand.button_pressed.connect(_on_jump_hold_start.bind(0))
-		$LeftHand.button_pressed.connect(_on_aux_pressed.bind(0))
-		$LeftHand.button_released.connect(_on_aux_released.bind(0))
 	if has_node("RightHand"):
 		$RightHand.button_released.connect(_on_hand_released.bind(1))
 		$RightHand.button_pressed.connect(_on_jump_hold_start.bind(1))
-		$RightHand.button_pressed.connect(_on_aux_pressed.bind(1))
-		$RightHand.button_released.connect(_on_aux_released.bind(1))
 	_jump_unlocked = not SitusSettings.get_jump_requires_activation()
 	if has_node("LeftHand"):
 		_hud = HandHud.new()
@@ -118,25 +110,6 @@ func _update_fps(delta: float) -> void:
 		set_hud_entry("fps", "FPS %d  (%.1f ms)" % [roundi(1.0 / _frame_time), _frame_time * 1000.0])
 
 
-## A/X: kurz tippen meldet aux_tapped (Projekte belegen das), lange halten würfelt die Farbe.
-func _on_aux_released(button_name: String, hand_index: int) -> void:
-	if button_name == "ax_touch" and hand_index == _aux_hand:
-		_aux_hand = -1
-		aux_tapped.emit(hand_index)
-
-
-func _update_aux_hold(delta: float) -> void:
-	if _aux_hand < 0:
-		return
-	_aux_time += delta
-	if _aux_time >= SitusSettings.get_jump_hold():
-		var ctrl := get_node_or_null("LeftHand" if _aux_hand == 0 else "RightHand") as XRController3D
-		if ctrl != null:
-			ctrl.trigger_haptic_pulse("haptic", 0.0, 0.5, 0.1, 0.0)
-		_aux_hand = -1
-		NetworkManager.request_random_color()
-
-
 func _on_button(button_name: String) -> void:
 	# Standalone nur per Trigger und ohne Server-Verbindung (nicht schon beim Auflegen eines Daumens)
 	if button_name == "trigger_click" and not NetworkManager.client_connected_flag and not SceneManager.standalone_mode:
@@ -149,16 +122,12 @@ func _on_button(button_name: String) -> void:
 ## Sprungtaste (Setting Situs Core -> Jump -> Button) auf beiden Controllern. Muss der Super
 ## Jump erst freigeschaltet werden, entscheidet die Dauer (siehe _on_jump_hold_start), sonst
 ## springt schon das Drücken.
+## ax_touch (X links, A rechts) würfelt die eigene Spielerfarbe neu, alle sehen sie.
 func _on_hand_button(button_name: String) -> void:
 	if button_name == SitusSettings.get_jump_button() and not SitusSettings.get_jump_requires_activation():
 		start_boost()
-
-
-## ax_touch (X links, A rechts): Beginn eines Tippens oder Haltens.
-func _on_aux_pressed(button_name: String, hand_index: int) -> void:
 	if button_name == "ax_touch":
-		_aux_hand = hand_index
-		_aux_time = 0.0
+		NetworkManager.request_random_color()
 
 
 ## Long-Press-Logik: kurz tippen = springen (wenn freigeschaltet), lange halten = Super Jump
@@ -271,7 +240,6 @@ func _on_right_stick(_action: String, value: Vector2) -> void:
 func _process(delta: float) -> void:
 	_update_boost(delta)
 	_update_jump_hold(delta)
-	_update_aux_hold(delta)
 	_update_fps(delta)
 	if _hint != null and _hint.visible:
 		_hint_time -= delta
