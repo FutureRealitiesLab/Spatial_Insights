@@ -19,6 +19,8 @@ const JUMP_HEIGHT    := "situs_core/jump/height_m"
 const JUMP_RISE      := "situs_core/jump/rise_s"
 const JUMP_GLIDE     := "situs_core/jump/glide_s"
 const JUMP_BUTTON    := "situs_core/jump/button"
+const JUMP_REQUIRES_ACTIVATION := "situs_core/jump/requires_activation"
+const JUMP_HOLD      := "situs_core/jump/hold_s"
 const JUMP_SHOW_BUTTONS := "situs_core/jump/show_button_names"
 
 const DEFAULT_SERVER_IP     := "127.0.0.1"
@@ -32,6 +34,8 @@ const DEFAULT_JUMP_HEIGHT   := 4.0
 const DEFAULT_JUMP_RISE     := 1.2
 const DEFAULT_JUMP_GLIDE    := 6.8
 const DEFAULT_JUMP_BUTTON   := "by_touch"
+const DEFAULT_JUMP_REQUIRES_ACTIVATION := true
+const DEFAULT_JUMP_HOLD     := 1.2
 const DEFAULT_JUMP_SHOW_BUTTONS := false
 
 ## Wird vom Plugin beim Aktivieren registriert, damit die Felder im Editor erscheinen.
@@ -58,6 +62,10 @@ const DEFINITIONS := [
 		"hint": PROPERTY_HINT_RANGE, "hint_string": "0.5,30,0.5,or_greater,suffix:s"},
 	{"name": JUMP_BUTTON, "type": TYPE_STRING, "default": DEFAULT_JUMP_BUTTON,
 		"hint": PROPERTY_HINT_ENUM, "hint_string": "by_touch,ax_touch,trigger_click,grip_click,primary_click,by_button,ax_button,select_button,none"},
+	{"name": JUMP_REQUIRES_ACTIVATION, "type": TYPE_BOOL, "default": DEFAULT_JUMP_REQUIRES_ACTIVATION,
+		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
+	{"name": JUMP_HOLD, "type": TYPE_FLOAT, "default": DEFAULT_JUMP_HOLD,
+		"hint": PROPERTY_HINT_RANGE, "hint_string": "0.3,3,0.1,suffix:s"},
 	{"name": JUMP_SHOW_BUTTONS, "type": TYPE_BOOL, "default": DEFAULT_JUMP_SHOW_BUTTONS,
 		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
 ]
@@ -76,6 +84,16 @@ static func get_discovery() -> bool:
 ## Name des Standalone-Modus auf der Verbindungstafel (Projekte können ihn umbenennen).
 static func get_standalone_label() -> String:
 	return str(ProjectSettings.get_setting(STANDALONE_LABEL, DEFAULT_STANDALONE_LABEL))
+
+
+## true: Der Super Jump muss erst per Long-Press der Sprungtaste freigeschaltet werden.
+static func get_jump_requires_activation() -> bool:
+	return bool(ProjectSettings.get_setting(JUMP_REQUIRES_ACTIVATION, DEFAULT_JUMP_REQUIRES_ACTIVATION))
+
+
+## So lange halten, bis der Super Jump umschaltet (Sekunden).
+static func get_jump_hold() -> float:
+	return float(ProjectSettings.get_setting(JUMP_HOLD, DEFAULT_JUMP_HOLD))
 
 
 ## Spielfläche in Metern: x = Breite (Weltachse x), y = Länge (Weltachse z).

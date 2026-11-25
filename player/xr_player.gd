@@ -12,6 +12,7 @@ extends XROrigin3D
 
 const SitusSettings := preload("res://addons/situs_core/core/situs_settings.gd")
 const JumpBoost := preload("res://addons/situs_core/player/jump_boost.gd")
+const HandHud := preload("res://addons/situs_core/player/hand_hud.gd")
 
 ## Sendeintervall in Sekunden (20 Hz)
 const SEND_RATE: float = 0.05
@@ -51,6 +52,11 @@ var _jump_crouched: bool = false
 var _jump_crouch_t: float = 0.0
 var _jump_crouch_min: float = 0.0
 var _jump_cool: float = 0.0
+## Super Jump freigeschaltet (Setting jump/requires_activation: erst per Long-Press)
+var _jump_unlocked: bool = true
+var _hud: Label3D = null            # kleines HUD am linken Controller (nur lokal)
+var _hold_hand: int = -1            # Hand, deren Sprungtaste gerade gehalten wird (-1 = keine)
+var _hold_time: float = 0.0
 var _hand_color: Color = Color(0, 0, 0, 0)
 var _stick_l: Vector2 = Vector2.ZERO
 var _stick_r: Vector2 = Vector2.ZERO
@@ -70,6 +76,17 @@ func _ready() -> void:
 		$RightHand.button_pressed.connect(_show_button_info.bind(1))
 		$RightHand.button_pressed.connect(_on_hand_button)
 		$RightHand.input_vector2_changed.connect(_on_right_stick)
+	if has_node("LeftHand"):
+		$LeftHand.button_released.connect(_on_hand_released.bind(0))
+		$LeftHand.button_pressed.connect(_on_jump_hold_start.bind(0))
+	if has_node("RightHand"):
+		$RightHand.button_released.connect(_on_hand_released.bind(1))
+		$RightHand.button_pressed.connect(_on_jump_hold_start.bind(1))
+	_jump_unlocked = not SitusSettings.get_jump_requires_activation()
+	if has_node("LeftHand") and SitusSettings.get_jump_enabled() and SitusSettings.get_jump_requires_activation():
+		_hud = HandHud.new()
+		$LeftHand.add_child(_hud)
+		_update_jump_hud()
 
 
 func _on_button(button_name: String) -> void:
@@ -81,13 +98,64 @@ func _on_button(button_name: String) -> void:
 		SceneManager.advance_scene()
 
 
-## Sprungtaste (Setting Situs Core -> Jump -> Button) auf beiden Controllern löst den Sprung aus.
+## Sprungtaste (Setting Situs Core -> Jump -> Button) auf beiden Controllern. Muss der Super
+## Jump erst freigeschaltet werden, entscheidet die Dauer (siehe _on_jump_hold_start), sonst
+## springt schon das Drücken.
 ## ax_touch (X links, A rechts) würfelt die eigene Spielerfarbe neu, alle sehen sie.
 func _on_hand_button(button_name: String) -> void:
-	if button_name == SitusSettings.get_jump_button():
+	if button_name == SitusSettings.get_jump_button() and not SitusSettings.get_jump_requires_activation():
 		start_boost()
 	if button_name == "ax_touch":
 		NetworkManager.request_random_color()
+
+
+## Long-Press-Logik: kurz tippen = springen (wenn freigeschaltet), lange halten = Super Jump
+## ein- oder ausschalten.
+func _on_jump_hold_start(button_name: String, hand_index: int) -> void:
+	if button_name != SitusSettings.get_jump_button() or not SitusSettings.get_jump_requires_activation():
+		return
+	_hold_hand = hand_index
+	_hold_time = 0.0
+
+
+func _on_hand_released(button_name: String, hand_index: int) -> void:
+	if button_name != SitusSettings.get_jump_button() or hand_index != _hold_hand:
+		return
+	_hold_hand = -1
+	if _jump_unlocked:
+		start_boost()
+	_update_jump_hud()
+
+
+func _update_jump_hold(delta: float) -> void:
+	if _hold_hand < 0:
+		return
+	_hold_time += delta
+	if _hold_time >= SitusSettings.get_jump_hold():
+		_jump_unlocked = not _jump_unlocked
+		_jump_crouched = false
+		var ctrl := get_node_or_null("LeftHand" if _hold_hand == 0 else "RightHand") as XRController3D
+		if ctrl != null:
+			ctrl.trigger_haptic_pulse("haptic", 0.0, 0.7, 0.2, 0.0)
+		_hold_hand = -1   # verbraucht: das Loslassen springt nicht
+	_update_jump_hud()
+
+
+func _update_jump_hud() -> void:
+	if _hud == null:
+		return
+	var button := SitusSettings.get_jump_button()
+	if button.begins_with("by_"):
+		button = "Y/B"
+	elif button.begins_with("ax_"):
+		button = "X/A"
+	var text := "SUPER JUMP  ON\ntap %s to jump, hold to turn off" % button if _jump_unlocked \
+			else "SUPER JUMP  off\nhold %s to activate" % button
+	# Fortschrittsbalken, sobald klar ist, dass es kein kurzes Tippen ist
+	if _hold_hand >= 0 and _hold_time > 0.25:
+		var filled := clampi(int(_hold_time / SitusSettings.get_jump_hold() * 10.0), 0, 10)
+		text += "\n[" + "#".repeat(filled) + "-".repeat(10 - filled) + "]"
+	_hud.set_entry("jump", text)
 
 
 ## Zeigt Hand, Aktionsname der Taste und das aktive Controller-Profil (OpenXR) im Blickfeld.
@@ -150,6 +218,7 @@ func _on_right_stick(_action: String, value: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	_update_boost(delta)
+	_update_jump_hold(delta)
 	if _hint != null and _hint.visible:
 		_hint_time -= delta
 		if _hint_time <= 0.0:
@@ -211,7 +280,7 @@ func _physics_process(delta: float) -> void:
 ## Hocke, dann Hochspringen erkennen (Kopfhöhe im Tracking-Raum, nur Auswertung der Höhe).
 ## Spätere Ansätze für den Fall, dass das nicht zuverlässig auslöst: docs/JUMP_FALLBACKS.md
 func _detect_jump(delta: float) -> void:
-	if delta <= 0.0 or not SitusSettings.get_jump_enabled():
+	if delta <= 0.0 or not SitusSettings.get_jump_enabled() or not _jump_unlocked:
 		return
 	var cam := $XRCamera3D as XRCamera3D
 	# Während des Flugs hebt sich der Ursprung mit: nur die Kopfhöhe relativ zum Ursprung zählt.
