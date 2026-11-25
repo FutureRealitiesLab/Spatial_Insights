@@ -12,6 +12,8 @@ uniform int steps : hint_range(8, 128) = 64;
 uniform float density_scale : hint_range(0.0, 20.0) = 4.0;
 uniform float emission_gain : hint_range(0.0, 10.0) = 2.0;
 uniform float threshold : hint_range(0.0, 1.0) = 0.05;
+// Zellularautomaten: harte Zellen statt Interpolation.
+uniform bool nearest = false;
 
 const int MAX_STEPS = 128;
 
@@ -51,7 +53,14 @@ void fragment() {
 	for (int i = 0; i < MAX_STEPS; i++) {
 		if (i >= steps || acc_a > 0.98) break;
 		vec3 p = ro + rd * t + 0.5;
-		float n = textureLod(volume_tex, vec3(p.y, p.x, p.z), 0.0).r;
+		vec3 q = vec3(p.y, p.x, p.z);
+		float n;
+		if (nearest) {
+			ivec3 size = textureSize(volume_tex, 0);
+			n = texelFetch(volume_tex, clamp(ivec3(q * vec3(size)), ivec3(0), size - ivec3(1)), 0).r;
+		} else {
+			n = textureLod(volume_tex, q, 0.0).r;
+		}
 		if (n > threshold) {
 			// Absorption pro Schritt, unabhaengig von der Schrittzahl
 			float a = 1.0 - exp(-n * n * density_scale * dt * 4.0);

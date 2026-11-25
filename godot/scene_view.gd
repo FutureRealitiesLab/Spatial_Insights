@@ -270,6 +270,7 @@ func _field2d(layer: Dictionary, rebuild: bool, ny: int, nx: int, bytes: PackedB
 				return Vector3(o.x + e.x * u, o.y + e.y * v, o.z))
 		"height":
 			mat.set_shader_parameter("extent", Vector2(e.x, e.y))
+			mat.set_shader_parameter("nearest", nearest)
 			mat.set_shader_parameter("height", e.z)
 			mesh = _surface(clampi(nx, 1, MAX_SURFACE_SEGMENTS), clampi(ny, 1, MAX_SURFACE_SEGMENTS),
 					func(u: float, v: float) -> Vector3:
@@ -354,6 +355,7 @@ func _slices(layer: Dictionary, rebuild: bool, magic: String, dims: Array, paylo
 		mat.set_shader_parameter("slice", pos)
 		mat.set_shader_parameter("colormap", colormap)
 		mat.set_shader_parameter("alpha", 0.5 if specs.size() > 1 else 1.0)
+		mat.set_shader_parameter("nearest", magic[0] == "C")
 		var mi := MeshInstance3D.new()
 		mi.mesh = _surface(1, 1, func(u: float, v: float) -> Vector3:
 			return origin + du * u + dv * v)
@@ -391,6 +393,10 @@ func _volume(layer: Dictionary, rebuild: bool, magic: String, dims: Array, paylo
 	mat.set_shader_parameter("colormap", colormap)
 	# Standard density_scale 4.0 entspricht alpha 0.25.
 	mat.set_shader_parameter("density_scale", 16.0 * alpha)
+	if magic[0] == "C":
+		# Harte Zellen; genug Schritte, damit keine Zelle uebersprungen wird.
+		mat.set_shader_parameter("nearest", true)
+		mat.set_shader_parameter("steps", clampi(maxi(ny, maxi(nx, nz)) * 3 / 2, 64, 128))
 	# Der Shader rechnet im Wuerfel -0.5..0.5, deshalb Einheitswuerfel und Groesse per scale.
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE

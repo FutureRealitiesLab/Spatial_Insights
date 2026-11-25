@@ -11,6 +11,8 @@ uniform int axis = 0;
 uniform float slice : hint_range(0.0, 1.0) = 0.5;
 uniform int colormap = 0;
 uniform float alpha : hint_range(0.0, 1.0) = 1.0;
+// Zellularautomaten: harte Zellen statt Interpolation.
+uniform bool nearest = false;
 
 void fragment() {
 	vec3 v;
@@ -21,7 +23,14 @@ void fragment() {
 	} else {
 		v = vec3(slice, UV.x, UV.y);
 	}
-	float r = textureLod(vol, vec3(v.y, v.x, v.z), 0.0).r;
+	vec3 q = vec3(v.y, v.x, v.z);
+	float r;
+	if (nearest) {
+		ivec3 size = textureSize(vol, 0);
+		r = texelFetch(vol, clamp(ivec3(q * vec3(size)), ivec3(0), size - ivec3(1)), 0).r;
+	} else {
+		r = textureLod(vol, q, 0.0).r;
+	}
 	ALBEDO = apply_colormap(r, colormap);
 	ALPHA = alpha;
 }

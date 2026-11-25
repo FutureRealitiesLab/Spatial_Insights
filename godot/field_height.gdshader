@@ -9,11 +9,18 @@ uniform sampler2D tex : filter_linear, repeat_disable;
 uniform int colormap = 0;
 uniform vec2 extent = vec2(1.0);
 uniform float height = 0.5;
+// Zellularautomaten: harte Zellen statt Interpolation.
+uniform bool nearest = false;
 
 varying float v_val;
 
 float sample_val(vec2 vxy) {
-	return clamp(textureLod(tex, vec2(vxy.y, vxy.x), 0.0).r, 0.0, 1.0);
+	vec2 q = vec2(vxy.y, vxy.x);
+	if (nearest) {
+		ivec2 size = textureSize(tex, 0);
+		return texelFetch(tex, clamp(ivec2(q * vec2(size)), ivec2(0), size - ivec2(1)), 0).r;
+	}
+	return clamp(textureLod(tex, q, 0.0).r, 0.0, 1.0);
 }
 
 void vertex() {
@@ -34,6 +41,6 @@ void fragment() {
 	float dzdy = height * (hu - hd) / (2.0 * dvy * extent.y);
 	vec3 n_local = normalize(vec3(-dzdx, -dzdy, 1.0));
 	NORMAL = normalize((VIEW_MATRIX * MODEL_MATRIX * vec4(n_local, 0.0)).xyz);
-	ALBEDO = apply_colormap(v_val, colormap);
+	ALBEDO = apply_colormap(nearest ? sample_val(UV) : v_val, colormap);
 	ROUGHNESS = 0.8;
 }
