@@ -247,7 +247,22 @@ func _update_info() -> void:
 	var lines: PackedStringArray = []
 	for r: Dictionary in view.scalar_ranges():
 		var span: float = r.vmax - r.vmin
-		lines.append("%s  data %.2f .. %.2f  (vspan %.2f .. %.2f)\n      colors span %.2f .. %.2f" % [
-				r.magic, r.low, r.high, r.vmin, r.vmax,
-				r.vmin + _min.value * span, r.vmin + _max.value * span])
+		lines.append("%s  data %s .. %s\n      vspan %s .. %s\n      colors span %s .. %s" % [
+				r.magic, number(r.low), number(r.high), number(r.vmin), number(r.vmax),
+				number(r.vmin + _min.value * span), number(r.vmin + _max.value * span)])
 	_info.text = "\n".join(lines) if not lines.is_empty() else "No scalar field (S) received yet"
+
+
+## Zahl mit drei gueltigen Stellen, sehr kleine und grosse Werte wissenschaftlich (1.23e-5).
+## GDScript kennt weder %g noch %e.
+static func number(value: float) -> String:
+	if value == 0.0:
+		return "0"
+	var exponent := floori(log(absf(value)) / log(10.0))
+	var mantissa := value / pow(10.0, exponent)
+	if absf(snappedf(mantissa, 0.01)) >= 10.0:   # z. B. 9.999 rundet auf die naechste Zehnerpotenz
+		mantissa /= 10.0
+		exponent += 1
+	if exponent >= -2 and exponent < 4:
+		return "%.*f" % [maxi(0, 2 - exponent), value]
+	return "%.2fe%d" % [mantissa, exponent]
