@@ -129,9 +129,8 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 
 ### 0c. Kugel-Leistung auf der Brille (2026-11-25)
 
-- [ ] Auf der Brille vergleichen: FPS im Controller-HUD mit Netz und Scheinkugeln (A/X antippen), bei gleicher Partikelzahl.
+- [x] Scheinkugeln getestet und wieder entfernt (2026-11-25): gleiche FPS wie mit Netzkugeln, sahen besser aus, führten aber je nach Simulation zu Darstellungsfehlern.
 - Messung am PC (20 000 Partikel): gebündeltes Übergeben der Positionen in GDScript bringt nichts (1,2 ms Puffer gegen 0,9 ms einzeln), deshalb nicht eingebaut. Stattdessen werden Farben nur noch bei Änderung übergeben (1,6 auf 0,9 ms).
-- Wenn Scheinkugeln deutlich helfen: in die Detailautomatik (`SPHERE_DETAIL`) übernehmen.
 
 ### 0b. Plan nächste Session: Datenverteilung (Stand 2026-11-11)
 

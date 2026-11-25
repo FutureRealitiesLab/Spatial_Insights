@@ -202,7 +202,7 @@ func _test_scene() -> void:
 	var plot: Node3D = view.get_parent()
 	var corner: Vector3 = plot.transform * Vector3(view.box_size.x, view.box_size.y, view.box_size.z)
 	_check(corner.is_equal_approx(Vector3(-2.0, 3.0, -4.0)), "plot corner %s" % corner)
-	_test_colors_and_impostors(view)
+	_test_colors(view)
 	_test_volume_and_detail(view)
 
 	_test_absolute_particles(view)
@@ -243,8 +243,8 @@ func _test_volume_and_detail(view: Node) -> void:
 	_check((view.layers["P3p1"].ball as SphereMesh).radial_segments == 7, "detail many")
 
 
-## Verlauf mit Deckkraft, Wertebereich, Farbmenue und Scheinkugeln.
-func _test_colors_and_impostors(view: Node) -> void:
+## Verlauf mit Deckkraft, Wertebereich und Farbmenue.
+func _test_colors(view: Node) -> void:
 	var colormaps := load("res://colormaps.gd")
 	var img: Image = colormaps.make_image({"offsets": PackedFloat32Array([0.0, 1.0]),
 			"colors": PackedColorArray([Color(1, 0, 0, 0), Color(0, 0, 1, 1)])})
@@ -273,10 +273,3 @@ func _test_colors_and_impostors(view: Node) -> void:
 	view.set_palette(fixed)
 	_check(view.layers["P2p1"].colors[0].is_equal_approx(Color(1, 0, 1)), "fixed color 1 %s" % view.layers["P2p1"].colors[0])
 	panel.queue_free()
-	view.set_impostors(true)
-	var layer: Dictionary = view.layers["P2p0"]
-	_check((layer.spheres as MultiMesh).mesh is QuadMesh, "impostor mesh")
-	# Mit Pfeilen in der Szene schreiben die Scheinkugeln eigene Tiefe.
-	_check(view._depth_spheres == view.layers.values().any(func(l: Dictionary) -> bool: return l.has("mm")), "impostor depth")
-	view.set_impostors(false)
-	_check((layer.spheres as MultiMesh).mesh is SphereMesh, "sphere mesh again")

@@ -23,7 +23,6 @@ var _freeze_button: Button
 var _boxes_button: Button
 var _colormap_button: Button
 var _color_panel: PanelContainer
-var _bound_player: Node = null
 var _direct_label: Label3D
 var _last_frame_ms: int = -DIRECT_HINT_AFTER_MS
 
@@ -60,7 +59,6 @@ func _build_direct_hint() -> void:
 
 
 func _process(_delta: float) -> void:
-	_connect_local_player()
 	var waiting: bool = SimulationRelay.role == SimulationRelay.Role.DIRECT \
 			and Time.get_ticks_msec() - _last_frame_ms > DIRECT_HINT_AFTER_MS
 	if waiting and not _direct_label.visible:
@@ -224,21 +222,3 @@ func _toggle_color_panel() -> void:
 		_color_panel.visible = not _color_panel.visible
 		# Das Menue braucht den Platz der Statistik (F3 blendet sie sonst ein und aus).
 		$DebugLayer/Stats.visible = not _color_panel.visible
-
-
-## Nur in der Brille: A/X antippen schaltet lokal zwischen Kugelnetz und Scheinkugeln.
-func _connect_local_player() -> void:
-	var player: Node = SceneManager.local_player
-	if not is_instance_valid(player) or player == _bound_player or not player.has_signal("aux_tapped"):
-		return
-	_bound_player = player
-	player.aux_tapped.connect(func(_hand: int) -> void:
-		$Plot/View.set_impostors(not $Plot/View.impostors)
-		_show_sphere_mode())
-	_show_sphere_mode()
-
-
-func _show_sphere_mode() -> void:
-	if is_instance_valid(_bound_player):
-		_bound_player.set_hud_entry("spheres", "Spheres: %s\ntap X/A to switch" % [
-				"fake (fast)" if $Plot/View.impostors else "mesh"])

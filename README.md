@@ -102,7 +102,7 @@ Jedes Datagramm beginnt mit 44 Byte (little-endian): Magic (4 Byte ASCII), Sessi
 | `C` | Colormap wechseln (rainbow, hot, gray, viridis) |
 | `F3` | Overlay ein-/ausblenden (Pakete/s, Frames/s, Frame-Größe, Verworfen, Session, Magic, Ebenen) |
 | `M` | Server: Farbmenü (Verlauf mit 2 bis 5 Farbpunkten samt Deckkraft, Vorlagen, Wertebereich, feste Farben 1..9), gilt für alle Clients |
-| A/X antippen | Brille: zwischen Kugelnetz und Scheinkugeln wechseln (nur lokal). A/X lange halten: neue Spielerfarbe |
+| A/X antippen | Brille: neue zufällige Spielerfarbe |
 
 Port und Bind-Adresse stehen an der Node `Receiver` (`port`, `bind_address`, `recv_buffer_size`). Es ist IPv4 gebunden (`0.0.0.0`).
 
