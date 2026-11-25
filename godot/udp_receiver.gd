@@ -10,7 +10,7 @@ extends Node
 ## unabhaengig verfolgt. Pro Frame wird `frame_received` ausgeloest.
 ## Payload:
 ##   S/V: quantisierte uint8-Werte (Bereich info.vspan), V dequantisieren per vspan
-##   P:   float32-Bytes [N nCoords], Positionen normalisiert 0..1
+##   P:   float32-Bytes [N nCoords], Positionen absolut in den Einheiten der Box
 ##   C:   bitgepackte Zustaende (info.bits Bit pro Zelle), der Shader entpackt
 ## info.box = [xmin xmax ymin ymax zmin zmax] gibt den Simulationsraum an.
 

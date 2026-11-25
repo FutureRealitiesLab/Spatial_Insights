@@ -7,7 +7,7 @@ extends Node3D
 ##
 ## Spatial Box: Jedes Frame traegt info.box = [xmin xmax ymin ymax zmin zmax] in
 ## Metern. Die erste Box eines Magics legt Lage und Groesse der Ebene fest, 2D-Daten
-## liegen bei zmin. `box_size` ist das Betrachtervolumen (MATLAB: [8 4 2]).
+## liegen bei zmin. `box_size` ist das Betrachtervolumen (MATLAB: [8 4 3]).
 ##
 ## S/C 2s<m>  Skalarfeld/Automat, m: 0 Ebene, 1 Hoehe, 2 Kugel, 3 Torus
 ## S/C 3s<n>  Schnitte, n: 0 drei Mittelschnitte, 1..9 n xy-Schnitte
@@ -26,8 +26,8 @@ const BoxOutline := preload("res://box_outline.gd")
 
 @export var receiver_path: NodePath
 ## Betrachtervolumen in Metern: x, y (Bodenflaeche) und z (Hoehe). Die lange Seite
-## ist x (MATLAB: 8 x 4 x 2).
-@export var box_size := Vector3(8.0, 4.0, 2.0)
+## ist x (MATLAB: 8 x 4 x 3).
+@export var box_size := Vector3(8.0, 4.0, 3.0)
 ## Drehung des ganzen Raums um die Senkrechte in Grad (Ausrichtung zum echten
 ## Raum). Bei 0 liegt MATLAB-y entlang -z, bei 90 liegt MATLAB-x entlang -z.
 @export var room_rotation_deg: float = 90.0
@@ -469,7 +469,8 @@ func _vectors(layer: Dictionary, rebuild: bool, magic: String, info: Dictionary,
 # ---- Partikel -----------------------------------------------------------------
 
 ## P 2p/3p<c>: Partikel, P 2q/3q<c>: Vektoren (Strassen). Spalten [x y (z) (vx vy (vz))],
-## Positionen normiert 0..1 in der Box, Vektoren werden mit der Boxausdehnung skaliert.
+## Positionen und Vektoren sind absolut, in denselben Einheiten wie die Box (PROTOCOL.md);
+## der Sender skaliert und platziert. Bei 2D liegt z auf zmin.
 func _particles(layer: Dictionary, rebuild: bool, magic: String, info: Dictionary, payload: PackedByteArray) -> bool:
 	var vis := magic[2]
 	if vis != "p" and vis != "q":
@@ -486,7 +487,6 @@ func _particles(layer: Dictionary, rebuild: bool, magic: String, info: Dictionar
 	var k := int(magic[3]) if magic[3].is_valid_int() else 0
 	var data := payload.to_float32_array()
 	var o: Vector3 = layer.o
-	var e: Vector3 = layer.e
 
 	var positions := PackedVector3Array()
 	var vectors := PackedVector3Array()
@@ -494,14 +494,14 @@ func _particles(layer: Dictionary, rebuild: bool, magic: String, info: Dictionar
 	for i in n:
 		var p := Vector3(0.0, 0.0, o.z)
 		for c in nd:
-			p[c] = o[c] + e[c] * data[i + n * c]
+			p[c] = data[i + n * c]
 		positions.append(p)
 		if has_vel:
 			var raw := Vector3.ZERO
 			for c in nd:
 				raw[c] = data[i + n * (nd + c)]
 			speeds.append(raw.length())
-			vectors.append(Vector3(e.x * raw.x, e.y * raw.y, e.z * raw.z))
+			vectors.append(raw)
 
 	if vis == "p":
 		var colors: PackedColorArray
@@ -536,6 +536,7 @@ func _set_points(layer: Dictionary, rebuild: bool, points: PackedVector3Array,
 		mi.material_override = _lit_material()
 		layer.root.add_child(mi)
 		layer.spheres = created
+	layer.points = points   # fuer den Selbsttest (headless speichert MultiMesh nichts)
 	var spheres: MultiMesh = layer.spheres
 	if spheres.instance_count != points.size():
 		spheres.instance_count = points.size()
@@ -551,6 +552,8 @@ func _set_arrow_layer(layer: Dictionary, rebuild: bool, positions: PackedVector3
 		layer.mm = _arrow_instances(layer.root, positions.size())
 	elif (layer.mm as MultiMesh).instance_count != positions.size():
 		(layer.mm as MultiMesh).instance_count = positions.size()
+	layer.points = positions
+	layer.vectors = vectors
 	var arrow_lengths := PackedFloat32Array()
 	for i in positions.size():
 		arrow_lengths.append(vectors[i].length())

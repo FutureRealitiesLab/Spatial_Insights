@@ -201,5 +201,25 @@ func _test_scene() -> void:
 	# MATLAB x/y/z -> Raum: x (8 m) entlang -z, y (4 m) entlang -x, z nach oben.
 	var plot: Node3D = view.get_parent()
 	var corner: Vector3 = plot.transform * Vector3(view.box_size.x, view.box_size.y, view.box_size.z)
-	_check(corner.is_equal_approx(Vector3(-2.0, 2.0, -4.0)), "plot corner %s" % corner)
+	_check(corner.is_equal_approx(Vector3(-2.0, 3.0, -4.0)), "plot corner %s" % corner)
+	_test_absolute_particles(view)
 	scene.free()
+
+## Partikelpositionen sind absolut in den Einheiten der Box (PROTOCOL.md): nichts umrechnen.
+func _test_absolute_particles(view: Node) -> void:
+	var session := 77
+	var cases := [
+		["P3p1", [0.0, 8.0, 0.0, 4.0, 0.0, 3.0], [4.0, 2.0, 1.5], Vector3(4.0, 2.0, 1.5)],
+		["P2p1", [2.0, 6.0, 1.0, 3.0, 0.5, 2.5], [3.5, 1.5], Vector3(3.5, 1.5, 0.5)],
+	]
+	for c: Array in cases:
+		var data := PackedFloat32Array(c[2])
+		view.show_frame(c[0], {"session_id": session, "box": c[1], "dims": [1, data.size()],
+				"vspan": [], "nostates": 0}, data.to_byte_array())
+		var got: Vector3 = view.layers[c[0]].points[0]
+		_check(got.is_equal_approx(c[3]), "absolute %s %s" % [c[0], got])
+	var arrow := PackedFloat32Array([4.0, 2.0, 1.5, 1.0, -0.5, 0.25])
+	view.show_frame("P3q2", {"session_id": session, "box": [0.0, 8.0, 0.0, 4.0, 0.0, 3.0],
+			"dims": [1, 6], "vspan": [], "nostates": 0}, arrow.to_byte_array())
+	var end: Vector3 = view.layers["P3q2"].points[0] + view.layers["P3q2"].vectors[0]
+	_check(end.is_equal_approx(Vector3(5.0, 1.5, 1.75)), "P3q2 end %s" % end)

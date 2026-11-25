@@ -74,15 +74,15 @@ Zwei Rechner: `address` auf die IPv4-Adresse des Godot-Rechners setzen und dort 
 | `V2p<k>` / `V3p<k>` | Gitterpunkte, um den Vektor verschoben (`k`=1 autoskaliert, 0 Originallänge) | `[ny nx 1 2]` / `[ny nx nz 3]` |
 | `V2q<c>` / `V3q<c>` | Pfeile mit exakter Länge (`c`=0 Farbe nach Betrag, 1..9 feste Farbe) | wie `V2p` |
 | `P2p<c>` / `P3p<c>` | Partikel (`c`=0 Farbe nach Geschwindigkeit, 1..9 feste Farbe) | `[N nd]` oder `[N 2*nd]` mit Geschwindigkeit |
-| `P2q<c>` / `P3q<c>` | Partikelvektoren (auch Straßen), Vektor mit Boxausdehnung skaliert | `[N 2*nd]` |
+| `P2q<c>` / `P3q<c>` | Partikelvektoren (auch Straßen), Verschiebung in den Einheiten der Box | `[N 2*nd]` |
 | `T...` | reserviert (Verkehr) | nicht umgesetzt |
 
 Wichtig:
 - **Achsen:** Dimension 1 = y (`ny`), Dimension 2 = x (`nx`), Dimension 3 = z, wie bei MATLAB-`imagesc`. Die Daten werden spaltenweise (`data(:)`) gesendet.
-- **Wertebereich:** `vspan=[vmin vmax]` gilt für alle S/V-Komponenten. Die Werte werden abgeschnitten und auf 0..255 quantisiert. Partikel gehen unquantisiert als `float32`, Positionen normiert auf 0..1. Automaten werden mit 1, 2, 4 oder 8 Bit pro Zustand gepackt (`nostates`).
+- **Wertebereich:** `vspan=[vmin vmax]` gilt für alle S/V-Komponenten. Die Werte werden abgeschnitten und auf 0..255 quantisiert. Partikel gehen unquantisiert als `float32`, Positionen und Vektoren sind absolut in den Einheiten der Box, der Sender skaliert und platziert selbst. Automaten werden mit 1, 2, 4 oder 8 Bit pro Zustand gepackt (`nostates`).
 - **Ebenen:** Das vollständige Magic ist der Ebenenschlüssel, jedes Magic ergibt eine eigene Ebene. Mehrere Magics dürfen dieselbe Frame-ID haben, jedes wird getrennt verfolgt. Ein Magic mit anderem 4. Byte (z. B. `S3v2` statt `S3v5`) ist eine andere Ebene.
-- **Spatial Box:** `udpOpen(box=[xmin xmax ymin ymax zmin zmax])` (Standard `[0 8 0 4 0 2]`, Meter) legt fest, wo die Ebene im Raum liegt. Die Box des ersten Frames eines Magics gilt für die ganze Session. 2D-Daten liegen bei `zmin`, Höhenflächen reichen von `zmin` bis `zmax`, Kugel und Torus sitzen in der Boxmitte mit dem Radius der kleinsten Kante. Eine Verzerrung gibt es nicht, die Daten füllen genau die Box. Der Absender muss die Box in den Raum legen.
-- **Raum und Ausrichtung:** Das Betrachtervolumen (`box_size` an der Node `View`) ist 8 m (MATLAB-x) × 4 m (MATLAB-y) × 2 m (MATLAB-z), MATLAB-z zeigt nach oben. Es wird in `simulation_scene.gd` aus den Situs-Settings gesetzt (lange Seite = x). `room_rotation_deg` an `View` (Situs-Szene: 90°) legt die lange x-Seite entlang der Godot-z-Achse, um zum echten Raum auszurichten. Später soll das serverseitig einstellbar sein.
+- **Spatial Box:** `udpOpen(box=[xmin xmax ymin ymax zmin zmax])` (Standard `[0 8 0 4 0 3]`, Meter) legt fest, wo die Ebene im Raum liegt. Die Box des ersten Frames eines Magics gilt für die ganze Session. 2D-Daten liegen bei `zmin`, Höhenflächen reichen von `zmin` bis `zmax`, Kugel und Torus sitzen in der Boxmitte mit dem Radius der kleinsten Kante. Eine Verzerrung gibt es nicht, die Daten füllen genau die Box. Der Absender muss die Box in den Raum legen.
+- **Raum und Ausrichtung:** Das Betrachtervolumen (`box_size` an der Node `View`) ist 8 m (MATLAB-x) × 4 m (MATLAB-y) × 3 m (MATLAB-z), MATLAB-z zeigt nach oben. Es wird in `simulation_scene.gd` aus den Situs-Settings gesetzt (lange Seite = x). `room_rotation_deg` an `View` (Situs-Szene: 90°) legt die lange x-Seite entlang der Godot-z-Achse, um zum echten Raum auszurichten. Später soll das serverseitig einstellbar sein.
 ## Paketformat (Kurzfassung)
 
 Jedes Datagramm beginnt mit 44 Byte (little-endian): Magic (4 Byte ASCII), Session-ID, Frame-ID, Chunk-Index und Chunk-Anzahl (je uint32) sowie die Spatial Box (6 × float32). Danach folgt je nach `magic(1)` ein Zusatz-Header (S/V: 76 Byte gesamt, P: 52, C: 57) und die Nutzdaten. Das vollständige Format steht in `PROTOCOL.md` im MATLAB-Ordner `udp/` (HTW-Cloud).
