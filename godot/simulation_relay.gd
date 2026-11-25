@@ -24,6 +24,7 @@ signal frozen_changed(frozen: bool)
 signal view_setting_changed(key: String, value: Variant)
 
 const UdpReceiver := preload("res://udp_receiver.gd")
+const Colormaps := preload("res://colormaps.gd")
 const CHANNEL_PREFIX := "sim/"
 ## Frames unter dieser Größe werden nicht komprimiert (Aufwand lohnt nicht).
 const COMPRESS_MIN_BYTES := 4096
@@ -37,7 +38,8 @@ var frozen: bool = false
 ## Darstellungs-Einstellungen, die der Server fuer alle vorgibt (Schluessel -> Wert).
 ## Neue Schluessel hier eintragen, z. B. spaeter Farbskala; scene_view/Szene reagieren auf
 ## view_setting_changed. Clients uebernehmen den Stand des Servers, auch beim Late Join.
-var view_settings: Dictionary = {"show_boxes": true, "colormap": 0}
+var view_settings: Dictionary = {"show_boxes": true, "preset": "rainbow",
+		"gradient": Colormaps.preset("rainbow"), "range": Vector2(0.0, 1.0)}
 
 # Statistik wie udp_receiver.gd (vom Debug-Overlay gelesen)
 var port: int = 4242

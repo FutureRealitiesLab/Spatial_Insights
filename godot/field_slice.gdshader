@@ -9,7 +9,6 @@ render_mode unshaded, cull_disabled;
 uniform sampler3D vol : filter_linear, repeat_disable;
 uniform int axis = 0;
 uniform float slice : hint_range(0.0, 1.0) = 0.5;
-uniform int colormap = 0;
 uniform float alpha : hint_range(0.0, 1.0) = 1.0;
 // Zellularautomaten: harte Zellen statt Interpolation.
 uniform bool nearest = false;
@@ -31,6 +30,7 @@ void fragment() {
 	} else {
 		r = textureLod(vol, q, 0.0).r;
 	}
-	ALBEDO = apply_colormap(r, colormap);
-	ALPHA = alpha;
+	vec4 c = apply_colormap(r);
+	ALBEDO = c.rgb;
+	ALPHA = alpha * c.a;
 }

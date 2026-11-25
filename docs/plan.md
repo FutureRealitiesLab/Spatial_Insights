@@ -127,6 +127,12 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 - [ ] Mit zwei Frames in Flight neu messen (ersetzt, Frames/s, ack).
 - [ ] MATLAB messen (`myUpdate` und `udpSend`), die Quelle begrenzt die Rate.
 
+### 0c. Kugel-Leistung auf der Brille (2026-11-25)
+
+- [ ] Auf der Brille vergleichen: FPS im Controller-HUD mit Netz und Scheinkugeln (A/X antippen), bei gleicher Partikelzahl.
+- Messung am PC (20 000 Partikel): gebündeltes Übergeben der Positionen in GDScript bringt nichts (1,2 ms Puffer gegen 0,9 ms einzeln), deshalb nicht eingebaut. Stattdessen werden Farben nur noch bei Änderung übergeben (1,6 auf 0,9 ms).
+- Wenn Scheinkugeln deutlich helfen: in die Detailautomatik (`SPHERE_DETAIL`) übernehmen.
+
 ### 0b. Plan nächste Session: Datenverteilung (Stand 2026-11-11)
 
 **Befund aus dem Test mit 7 Brillen (GoL):** Bewegung und Rendering laufen flüssig, aber die Simulation ruckelt, weil zu wenige Frames ankommen. Paketverlust (ENet-Wert im Server-Fenster) teilweise über 12 %. Der Server hing dabei selbst per WLAN am Router, jedes Frame lief also zweimal durch die Luft. **Wichtig ist Geschwindigkeit, nicht Vollständigkeit:** Verlorene Frames sind egal, langsame Übertragung ist das Problem.

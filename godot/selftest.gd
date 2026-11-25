@@ -202,7 +202,9 @@ func _test_scene() -> void:
 	var plot: Node3D = view.get_parent()
 	var corner: Vector3 = plot.transform * Vector3(view.box_size.x, view.box_size.y, view.box_size.z)
 	_check(corner.is_equal_approx(Vector3(-2.0, 3.0, -4.0)), "plot corner %s" % corner)
+	_test_colors_and_impostors(view)
 	_test_volume_and_detail(view)
+
 	_test_absolute_particles(view)
 	scene.free()
 
@@ -239,3 +241,32 @@ func _test_volume_and_detail(view: Node) -> void:
 	data.resize(15000)
 	view.show_frame("P3p1", info, data.to_byte_array())
 	_check((view.layers["P3p1"].ball as SphereMesh).radial_segments == 7, "detail many")
+
+
+## Verlauf mit Deckkraft, Wertebereich, Farbmenue und Scheinkugeln.
+func _test_colors_and_impostors(view: Node) -> void:
+	var colormaps := load("res://colormaps.gd")
+	var img: Image = colormaps.make_image({"offsets": PackedFloat32Array([0.0, 1.0]),
+			"colors": PackedColorArray([Color(1, 0, 0, 0), Color(0, 0, 1, 1)])})
+	_check(img.get_width() == 256 and img.get_pixel(0, 0).a < 0.01 and img.get_pixel(255, 0).b > 0.99, "gradient image")
+	view.set_value_range(Vector2(0.25, 0.75))
+	var mat: ShaderMaterial = view.layers["S3v0"].mats[0]
+	_check(mat.get_shader_parameter("value_range") == Vector2(0.25, 0.75), "value range on material")
+	var panel: Node = load("res://color_panel.gd").new()
+	panel.view = view
+	root.add_child(panel)
+	var got := []
+	panel.gradient_edited.connect(func(g: Dictionary) -> void: got.append(g))
+	panel.show_gradient(colormaps.preset("gray"), "gray")
+	_check(got.is_empty(), "show_gradient is silent")
+	panel._add_stop()
+	_check(got.size() == 1 and (got[0].offsets as PackedFloat32Array).size() == 3, "add color")
+	var ranges: Array = view.scalar_ranges()
+	_check(not ranges.is_empty() and ranges[0].low >= ranges[0].vmin and ranges[0].high <= ranges[0].vmax, "scalar ranges")
+	panel._update_info()
+	panel.queue_free()
+	view.set_impostors(true)
+	var layer: Dictionary = view.layers["P2p0"]
+	_check((layer.spheres as MultiMesh).mesh is QuadMesh, "impostor mesh")
+	view.set_impostors(false)
+	_check((layer.spheres as MultiMesh).mesh is SphereMesh, "sphere mesh again")

@@ -5,6 +5,8 @@ extends "res://addons/situs_core/templates/scene_hooks.gd"
 ## Raums gegenüber den Brillen übernimmt der XR-Ursprung (nicht dieser Inhalt).
 
 const SitusSettings := preload("res://addons/situs_core/core/situs_settings.gd")
+const Colormaps := preload("res://colormaps.gd")
+const ColorPanel := preload("res://color_panel.gd")
 
 
 func _enter_tree() -> void:
@@ -20,6 +22,8 @@ var _freeze_labels: Array[Label3D] = []
 var _freeze_button: Button
 var _boxes_button: Button
 var _colormap_button: Button
+var _color_panel: PanelContainer
+var _bound_player: Node = null
 var _direct_label: Label3D
 var _last_frame_ms: int = -DIRECT_HINT_AFTER_MS
 
@@ -56,6 +60,7 @@ func _build_direct_hint() -> void:
 
 
 func _process(_delta: float) -> void:
+	_connect_local_player()
 	var waiting: bool = SimulationRelay.role == SimulationRelay.Role.DIRECT \
 			and Time.get_ticks_msec() - _last_frame_ms > DIRECT_HINT_AFTER_MS
 	if waiting and not _direct_label.visible:
@@ -69,7 +74,8 @@ func _process(_delta: float) -> void:
 
 
 ## Taste F (Server und Direkt-Instanz) haelt die Simulation fuer alle an, Taste B blendet die
-## Rahmen der Spatial Boxes fuer alle ein oder aus, Taste C schaltet die Farbskala fuer alle weiter.
+## Rahmen der Spatial Boxes fuer alle ein oder aus, Taste C schaltet die Farbskala fuer alle weiter,
+## M zeigt das Farbmenue.
 ## Die Leertaste ist fuer den Boost-Sprung
 ## der PC-Spieler reserviert.
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -81,7 +87,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				SimulationRelay.toggle_view_setting("show_boxes")
 			KEY_C:
 				_next_colormap()
-
+			KEY_M:
+				_toggle_color_panel()
 
 
 ## "FREEZE" mittig auf den vier Seitenflaechen des Raums (ca. 1 m breit, ohne Drehung, von
@@ -122,9 +129,13 @@ func _build_freeze_ui() -> void:
 		_boxes_button = _shortcut_button("Boxes (B)", func(on: bool) -> void: SimulationRelay.set_view_setting("show_boxes", on))
 		_colormap_button = _shortcut_button("")
 		_colormap_button.pressed.connect(_next_colormap)
+		_build_color_panel()
+		var colors_button := _shortcut_button("Colors (M)")
+		colors_button.pressed.connect(_toggle_color_panel)
 		box.add_child(_freeze_button)
 		box.add_child(_boxes_button)
 		box.add_child(_colormap_button)
+		box.add_child(colors_button)
 		$DebugLayer.add_child(box)
 
 
@@ -148,17 +159,79 @@ func _on_frozen_changed(frozen: bool) -> void:
 
 ## Darstellungs-Einstellungen kommen vom Server (SimulationRelay.view_settings).
 func _on_view_setting_changed(key: String, value: Variant) -> void:
-	if key == "show_boxes":
-		$Plot/View.set_show_boxes(bool(value))
-		if _boxes_button != null:
-			_boxes_button.set_pressed_no_signal(bool(value))
-	elif key == "colormap":
-		$Plot/View.set_colormap(int(value))
-		if _colormap_button != null:
-			_colormap_button.text = "Colormap (C): %s" % $Plot/View.colormap_name()
+	match key:
+		"show_boxes":
+			$Plot/View.set_show_boxes(bool(value))
+			if _boxes_button != null:
+				_boxes_button.set_pressed_no_signal(bool(value))
+		"gradient":
+			$Plot/View.set_gradient(value)
+		"range":
+			$Plot/View.set_value_range(value)
+			if _color_panel != null:
+				_color_panel.show_range(value)
+		"preset":
+			$Plot/View.preset_name = str(value)
+			if _colormap_button != null:
+				_colormap_button.text = "Colormap (C): %s" % value
+			# Bei "custom" kommt die Aenderung aus dem Menue selbst, nicht neu aufbauen.
+			if _color_panel != null and value != "custom":
+				_color_panel.show_gradient(Colormaps.preset(value), value)
 
 
-## Taste C und Button: naechste Farbskala fuer alle (nur Server und Direkt-Instanz wirken).
+## Vorlage fuer alle waehlen (nur Server und Direkt-Instanz wirken).
+func _choose_preset(preset: String) -> void:
+	SimulationRelay.set_view_setting("preset", preset)
+	SimulationRelay.set_view_setting("gradient", Colormaps.preset(preset))
+
+
+## Taste C und Button: naechste Vorlage.
 func _next_colormap() -> void:
-	var count: int = ($Plot/View.COLORMAP_NAMES as Array).size()
-	SimulationRelay.set_view_setting("colormap", (int(SimulationRelay.view_settings.get("colormap", 0)) + 1) % count)
+	var index: int = Colormaps.NAMES.find(SimulationRelay.view_settings.get("preset", "rainbow"))
+	_choose_preset(Colormaps.NAMES[(index + 1) % Colormaps.NAMES.size()])
+
+
+## Farbmenue (Server): links unten, mit M oder Button ein- und ausblenden.
+func _build_color_panel() -> void:
+	_color_panel = ColorPanel.new()
+	_color_panel.view = $Plot/View
+	_color_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_color_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_color_panel.offset_left = 12.0
+	_color_panel.offset_bottom = -12.0
+	_color_panel.visible = false
+	$DebugLayer.add_child(_color_panel)
+	_color_panel.preset_chosen.connect(_choose_preset)
+	_color_panel.gradient_edited.connect(func(gradient: Dictionary) -> void:
+		SimulationRelay.set_view_setting("preset", "custom")
+		SimulationRelay.set_view_setting("gradient", gradient))
+	_color_panel.range_edited.connect(func(range_01: Vector2) -> void:
+		SimulationRelay.set_view_setting("range", range_01))
+	var preset: String = SimulationRelay.view_settings.get("preset", "rainbow")
+	_color_panel.show_gradient(SimulationRelay.view_settings.get("gradient", Colormaps.preset(preset)), preset)
+	_color_panel.show_range(SimulationRelay.view_settings.get("range", Vector2(0.0, 1.0)))
+
+
+func _toggle_color_panel() -> void:
+	if _color_panel != null:
+		_color_panel.visible = not _color_panel.visible
+		# Das Menue braucht den Platz der Statistik (F3 blendet sie sonst ein und aus).
+		$DebugLayer/Stats.visible = not _color_panel.visible
+
+
+## Nur in der Brille: A/X antippen schaltet lokal zwischen Kugelnetz und Scheinkugeln.
+func _connect_local_player() -> void:
+	var player: Node = SceneManager.local_player
+	if not is_instance_valid(player) or player == _bound_player or not player.has_signal("aux_tapped"):
+		return
+	_bound_player = player
+	player.aux_tapped.connect(func(_hand: int) -> void:
+		$Plot/View.set_impostors(not $Plot/View.impostors)
+		_show_sphere_mode())
+	_show_sphere_mode()
+
+
+func _show_sphere_mode() -> void:
+	if is_instance_valid(_bound_player):
+		_bound_player.set_hud_entry("spheres", "Spheres: %s\ntap X/A to switch" % [
+				"fake (fast)" if $Plot/View.impostors else "mesh"])

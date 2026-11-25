@@ -7,10 +7,9 @@ render_mode unshaded, cull_front, depth_draw_never, blend_mix;
 #include "res://colormap.gdshaderinc"
 
 uniform sampler3D volume_tex : filter_linear, repeat_disable;
-uniform int colormap = 0;
 uniform int steps : hint_range(8, 128) = 64;
 uniform float density_scale : hint_range(0.0, 20.0) = 4.0;
-uniform float emission_gain : hint_range(0.0, 10.0) = 2.0;
+uniform float emission_gain : hint_range(0.0, 10.0) = 0.3;
 uniform float threshold : hint_range(0.0, 1.0) = 0.05;
 // Zellularautomaten: harte Zellen statt Interpolation.
 uniform bool nearest = false;
@@ -63,8 +62,10 @@ void fragment() {
 		}
 		if (n > threshold) {
 			// Absorption pro Schritt, unabhaengig von der Schrittzahl
-			float a = 1.0 - exp(-n * n * density_scale * dt * 4.0);
-			vec3 c = apply_colormap(n, colormap) * (1.0 + emission_gain * n);
+			vec4 mapped = apply_colormap(n);
+			float m = map_value(n);
+			float a = 1.0 - exp(-m * m * density_scale * mapped.a * dt * 4.0);
+			vec3 c = mapped.rgb * (1.0 + emission_gain * m);
 			acc_rgb += (1.0 - acc_a) * a * c;
 			acc_a += (1.0 - acc_a) * a;
 		}

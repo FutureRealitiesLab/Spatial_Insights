@@ -9,7 +9,6 @@ render_mode unshaded, cull_disabled, depth_draw_opaque;
 #include "res://colormap.gdshaderinc"
 
 uniform sampler2D tex : filter_linear, repeat_disable;
-uniform int colormap = 0;
 uniform float value_scale = 1.0;
 uniform bool nearest = false;
 // Gepackte CA-Zustaende: tex enthaelt die Payload-Bytes zeilenweise, die Zelle
@@ -39,5 +38,5 @@ void fragment() {
 			r = texture(tex, uv).r;
 		}
 	}
-	ALBEDO = apply_colormap(clamp(r * value_scale, 0.0, 1.0), colormap);
+	ALBEDO = apply_colormap(clamp(r * value_scale, 0.0, 1.0)).rgb;
 }

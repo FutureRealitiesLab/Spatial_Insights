@@ -6,7 +6,6 @@ render_mode cull_disabled;
 #include "res://colormap.gdshaderinc"
 
 uniform sampler2D tex : filter_linear, repeat_disable;
-uniform int colormap = 0;
 uniform vec2 extent = vec2(1.0);
 uniform float height = 0.5;
 // Zellularautomaten: harte Zellen statt Interpolation.
@@ -41,6 +40,6 @@ void fragment() {
 	float dzdy = height * (hu - hd) / (2.0 * dvy * extent.y);
 	vec3 n_local = normalize(vec3(-dzdx, -dzdy, 1.0));
 	NORMAL = normalize((VIEW_MATRIX * MODEL_MATRIX * vec4(n_local, 0.0)).xyz);
-	ALBEDO = apply_colormap(nearest ? sample_val(UV) : v_val, colormap);
+	ALBEDO = apply_colormap(nearest ? sample_val(UV) : v_val).rgb;
 	ROUGHNESS = 0.8;
 }

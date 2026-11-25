@@ -35,12 +35,12 @@ const BoxOutline := preload("res://box_outline.gd")
 @export var particle_radius: float = 0.04
 @export var outline_path: NodePath
 @export var floor_outline_path: NodePath
-## 0 rainbow, 1 hot, 2 gray, 3 viridis (Taste C wechselt).
+## Start-Vorlage, Index in Colormaps.NAMES (Taste C wechselt).
 @export var colormap: int = 0
 ## false: Taste C wird hier nicht ausgewertet (die Szene steuert die Farbskala).
 @export var handle_keys: bool = true
 
-const COLORMAP_NAMES := ["rainbow", "hot", "gray", "viridis"]
+const Colormaps := preload("res://colormaps.gd")
 ## MATLAB lines(9): die ersten sieben Farben, danach wiederholt.
 const SPECIES_COLORS := [
 	Color(0.0, 0.447, 0.741), Color(0.85, 0.325, 0.098), Color(0.929, 0.694, 0.125),
@@ -60,9 +60,17 @@ var current_magic: String = ""
 var _session: int = -1
 var _arrow_mesh: ArrayMesh
 var _shaders: Dictionary = {}
+## Gemeinsame Farbtabelle aller Materialien; Aenderungen wirken sofort ueberall.
+var lut: ImageTexture
+var value_range := Vector2(0.0, 1.0)
+var preset_name: String = "rainbow"
+## Kugeln als Scheinkugeln (2 Dreiecke) statt als Netz; lokaler Schalter zum Vergleichen.
+var impostors := false
 
 
 func _ready() -> void:
+	preset_name = Colormaps.NAMES[colormap]
+	set_gradient(Colormaps.preset(preset_name))
 	_arrow_mesh = _make_arrow_mesh()
 	_apply_layout()
 	var receiver := get_node_or_null(receiver_path)
@@ -74,19 +82,53 @@ func _ready() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if handle_keys and event is InputEventKey and event.pressed and event.keycode == KEY_C:
-		set_colormap((colormap + 1) % COLORMAP_NAMES.size())
+		colormap = (colormap + 1) % Colormaps.NAMES.size()
+		preset_name = Colormaps.NAMES[colormap]
+		set_gradient(Colormaps.preset(preset_name))
 
 
-## Setzt die Farbskala fuer alle Ebenen (in der Simulationsszene gibt der Server sie vor).
-func set_colormap(index: int) -> void:
-	colormap = clampi(index, 0, COLORMAP_NAMES.size() - 1)
+## Verlauf mit Deckkraft fuer alle Ebenen (in der Simulationsszene gibt der Server ihn vor).
+func set_gradient(gradient: Dictionary) -> void:
+	var img := Colormaps.make_image(gradient)
+	if lut == null:
+		lut = ImageTexture.create_from_image(img)
+	else:
+		lut.update(img)
+
+
+## Ausschnitt des Wertebereichs (0..1), der auf den Verlauf abgebildet wird.
+func set_value_range(range_01: Vector2) -> void:
+	value_range = range_01
 	for layer: Dictionary in layers.values():
 		for mat: ShaderMaterial in layer.mats:
-			mat.set_shader_parameter("colormap", colormap)
+			mat.set_shader_parameter("value_range", value_range)
+
+
+func _apply_colors(mat: ShaderMaterial) -> void:
+	mat.set_shader_parameter("lut", lut)
+	mat.set_shader_parameter("value_range", value_range)
 
 
 func colormap_name() -> String:
-	return COLORMAP_NAMES[colormap]
+	return preset_name
+
+
+## Je Skalarfeld: Wertebereich des Senders (vspan) und die gerade uebertragenen Extremwerte.
+func scalar_ranges() -> Array:
+	var result := []
+	for layer: Dictionary in layers.values():
+		if not layer.has("values"):
+			continue
+		var low := 255
+		var high := 0
+		for q: int in layer.values as PackedByteArray:
+			low = mini(low, q)
+			high = maxi(high, q)
+		var span: Array = layer.vspan
+		var step: float = (span[1] - span[0]) / 255.0
+		result.append({"magic": layer.magic, "vmin": span[0], "vmax": span[1],
+				"low": span[0] + low * step, "high": span[0] + high * step})
+	return result
 
 
 ## Dreht `Plot` so, dass MATLAB-x nach +x, MATLAB-y nach -z (in den Raum) und
@@ -143,6 +185,10 @@ func show_frame(magic: String, info: Dictionary, payload: PackedByteArray) -> vo
 		layer.root.add_child(frame_lines)
 		layer.frame = frame_lines
 		frame_lines.visible = show_boxes
+
+	if magic[0] == "S":
+		layer.values = payload   # nur eine Referenz, fuer scalar_ranges()
+		layer.vspan = info.vspan
 
 	var ok := false
 	match magic[0]:
@@ -252,7 +298,7 @@ func _field2d(layer: Dictionary, rebuild: bool, ny: int, nx: int, bytes: PackedB
 	var mat := ShaderMaterial.new()
 	mat.shader = _shader("field_height" if mode == "height" else "field_image")
 	mat.set_shader_parameter("tex", tex)
-	mat.set_shader_parameter("colormap", colormap)
+	_apply_colors(mat)
 	if bits > 0:
 		mat.set_shader_parameter("packed_states", true)
 		mat.set_shader_parameter("bits", bits)
@@ -353,7 +399,7 @@ func _slices(layer: Dictionary, rebuild: bool, magic: String, dims: Array, paylo
 		mat.set_shader_parameter("vol", tex)
 		mat.set_shader_parameter("axis", axis)
 		mat.set_shader_parameter("slice", pos)
-		mat.set_shader_parameter("colormap", colormap)
+		_apply_colors(mat)
 		mat.set_shader_parameter("alpha", 0.5 if specs.size() > 1 else 1.0)
 		mat.set_shader_parameter("nearest", magic[0] == "C")
 		var mi := MeshInstance3D.new()
@@ -390,7 +436,7 @@ func _volume(layer: Dictionary, rebuild: bool, magic: String, dims: Array, paylo
 	var mat := ShaderMaterial.new()
 	mat.shader = _shader("volume_raymarch")
 	mat.set_shader_parameter("volume_tex", tex)
-	mat.set_shader_parameter("colormap", colormap)
+	_apply_colors(mat)
 	# Standard density_scale 4.0 entspricht alpha 0.25.
 	mat.set_shader_parameter("density_scale", 16.0 * alpha)
 	if magic[0] == "C":
@@ -543,17 +589,48 @@ func _set_points(layer: Dictionary, rebuild: bool, points: PackedVector3Array,
 		layer.ball = ball
 		var mi := MultiMeshInstance3D.new()
 		mi.multimesh = created
-		mi.material_override = _lit_material()
 		layer.root.add_child(mi)
 		layer.spheres = created
+		layer.sphere_node = mi
+		var quad := QuadMesh.new()
+		quad.size = Vector2.ONE * 2.0 * radius
+		layer.quad = quad
+		_apply_sphere_style(layer)
 	layer.points = points   # fuer Detailstufe und Selbsttest (headless speichert MultiMesh nichts)
 	_update_sphere_detail()
 	var spheres: MultiMesh = layer.spheres
+	var recolor := rebuild
 	if spheres.instance_count != points.size():
 		spheres.instance_count = points.size()
+		recolor = true
+	# Farben nur uebergeben, wenn sie sich aendern: spart etwa die Haelfte der Aufrufe.
+	if recolor or layer.get("colors") != colors:
+		layer.colors = colors
+		for i in points.size():
+			spheres.set_instance_color(i, colors[i])
 	for i in points.size():
 		spheres.set_instance_transform(i, Transform3D(Basis.IDENTITY, points[i]))
-		spheres.set_instance_color(i, colors[i])
+
+
+## Kugelnetz oder Scheinkugel (Quadrat mit Kugel-Shader).
+func _apply_sphere_style(layer: Dictionary) -> void:
+	var multi: MultiMesh = layer.spheres
+	var node: MultiMeshInstance3D = layer.sphere_node
+	multi.mesh = layer.quad if impostors else layer.ball
+	if impostors:
+		var mat := ShaderMaterial.new()
+		mat.shader = _shader("impostor_sphere")
+		node.material_override = mat
+		node.extra_cull_margin = 1.0
+	else:
+		node.material_override = _lit_material()
+
+
+func set_impostors(value: bool) -> void:
+	impostors = value
+	for layer: Dictionary in layers.values():
+		if layer.has("spheres"):
+			_apply_sphere_style(layer)
 
 
 ## Kugeln groeber, je mehr es insgesamt sind (alle Ebenen zusammen), damit die Brille mithaelt.
