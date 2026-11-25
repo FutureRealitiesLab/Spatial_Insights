@@ -99,9 +99,14 @@ offset_bottom = 160.0
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="NetworkLabel" type="Label" parent="ServerHUD/Panel/VBox" unique_id=228237326]
+[node name="NetworkLabel" type="RichTextLabel" parent="ServerHUD/Panel/VBox" unique_id=228237326]
+custom_minimum_size = Vector2(460, 0)
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/normal_font_size = 13
 text = "Network: -"
 
 [node name="SceneLabel" type="Label" parent="ServerHUD/Panel/VBox" unique_id=1132944006]
