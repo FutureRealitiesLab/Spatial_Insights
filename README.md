@@ -30,6 +30,9 @@ tools/
   setup_android.ps1  richtet einen Rechner für den Android-Export ein
 ```
 
+<img width="1522" height="1451" alt="Screenshot 2026-11-25 140201" src="https://github.com/user-attachments/assets/29e0da9f-9cbc-4d76-b64f-486ce8b50941" />
+
+
 ## Schnellstart
 
 1. **Godot 4.7.2**: `godot/project.godot` importieren und starten (F5), dann *Als Server starten*. Das Overlay (F3) zeigt "lauscht" auf Port 4242. Einrichtung des Rechners: [docs/INSTALL.md](docs/INSTALL.md).
