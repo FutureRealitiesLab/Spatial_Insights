@@ -188,6 +188,7 @@ Begrenzend ist meist der MATLAB-Sender: Ein `write()` kostet etwa 10 ms je Datag
 - **Firewall (Server-PC):** eingehend UDP 7777 (Brillen verbinden sich per ENet) und, wenn MATLAB auf einem anderen Rechner läuft, UDP 4242 freigeben, in einer Admin-PowerShell:
   ```powershell
   New-NetFirewallRule -DisplayName "Situs ENet 7777" -Direction Inbound -Protocol UDP -LocalPort 7777 -Action Allow
+  New-NetFirewallRule -DisplayName "Situs Discovery 7778" -Direction Inbound -Protocol UDP -LocalPort 7778 -Action Allow
   New-NetFirewallRule -DisplayName "Godot UDP 4242" -Direction Inbound -Protocol UDP -LocalPort 4242 -Action Allow
   ```
 - **Nur ein Programm pro Port:** `udpListen` (MATLAB) und der Godot-Betrachter können nicht gleichzeitig auf Port 4242 hören.

@@ -24,11 +24,12 @@ powershell -ExecutionPolicy Bypass -File tools\setup_android.ps1
 
 Damit läuft das Projekt auf dem PC. Für die Brillen:
 
-7. **Server-IP eintragen:** *Project Settings → Situs Core → Network → Server Ip* auf die LAN-IP des Server-PCs setzen (`ipconfig`).
+7. **Server finden:** Die Brillen und PC-Clients suchen den Server im LAN selbst (UDP-Broadcast, Port 7778). Die feste IP unter *Project Settings → Situs Core → Network → Server Ip* (`ipconfig`) wird bevorzugt, wenn sie antwortet, und dient als Rückfall.
 8. **Firewall am Server-PC freigeben** (Admin-PowerShell). Port 7777 brauchen die Brillen, Port 4242 nur, wenn MATLAB auf einem anderen Rechner läuft:
 
 ```powershell
 New-NetFirewallRule -DisplayName "Situs ENet 7777" -Direction Inbound -Protocol UDP -LocalPort 7777 -Action Allow
+New-NetFirewallRule -DisplayName "Situs Discovery 7778" -Direction Inbound -Protocol UDP -LocalPort 7778 -Action Allow
 ```
 
 ```powershell
