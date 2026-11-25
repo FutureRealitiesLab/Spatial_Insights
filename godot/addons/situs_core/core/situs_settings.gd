@@ -10,6 +10,7 @@ extends RefCounted
 
 const SERVER_IP      := "situs_core/network/server_ip"
 const DISCOVERY      := "situs_core/network/discovery"
+const STANDALONE_LABEL := "situs_core/standalone/label"
 const ROOM_WIDTH     := "situs_core/room/width_m"
 const ROOM_LENGTH    := "situs_core/room/length_m"
 const ROOM_ROTATION  := "situs_core/room/rotation_deg"
@@ -22,6 +23,7 @@ const JUMP_SHOW_BUTTONS := "situs_core/jump/show_button_names"
 
 const DEFAULT_SERVER_IP     := "127.0.0.1"
 const DEFAULT_DISCOVERY     := true
+const DEFAULT_STANDALONE_LABEL := "standalone mode"
 const DEFAULT_ROOM_WIDTH    := 4.0
 const DEFAULT_ROOM_LENGTH   := 8.0
 const DEFAULT_ROOM_ROTATION := 0.0
@@ -37,6 +39,8 @@ const DEFINITIONS := [
 	{"name": SERVER_IP, "type": TYPE_STRING, "default": DEFAULT_SERVER_IP,
 		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
 	{"name": DISCOVERY, "type": TYPE_BOOL, "default": DEFAULT_DISCOVERY,
+		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
+	{"name": STANDALONE_LABEL, "type": TYPE_STRING, "default": DEFAULT_STANDALONE_LABEL,
 		"hint": PROPERTY_HINT_NONE, "hint_string": ""},
 	{"name": ROOM_WIDTH, "type": TYPE_FLOAT, "default": DEFAULT_ROOM_WIDTH,
 		"hint": PROPERTY_HINT_RANGE, "hint_string": "0.5,100,0.1,or_greater,suffix:m"},
@@ -67,6 +71,11 @@ static func get_server_ip() -> String:
 ## true: Clients suchen den Server im LAN, die IP oben ist bevorzugt und Rückfall.
 static func get_discovery() -> bool:
 	return bool(ProjectSettings.get_setting(DISCOVERY, DEFAULT_DISCOVERY))
+
+
+## Name des Standalone-Modus auf der Verbindungstafel (Projekte können ihn umbenennen).
+static func get_standalone_label() -> String:
+	return str(ProjectSettings.get_setting(STANDALONE_LABEL, DEFAULT_STANDALONE_LABEL))
 
 
 ## Spielfläche in Metern: x = Breite (Weltachse x), y = Länge (Weltachse z).

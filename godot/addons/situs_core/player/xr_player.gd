@@ -73,8 +73,8 @@ func _ready() -> void:
 
 
 func _on_button(button_name: String) -> void:
-	# Standalone nur aktivieren, wenn KEINE Server-Verbindung besteht
-	if not NetworkManager.client_connected_flag and not SceneManager.standalone_mode:
+	# Standalone nur per Trigger und ohne Server-Verbindung (nicht schon beim Auflegen eines Daumens)
+	if button_name == "trigger_click" and not NetworkManager.client_connected_flag and not SceneManager.standalone_mode:
 		SceneManager.activate_standalone()
 	# Secondary Button (B/Y) → nächste Szene (nur im Standalone-Modus; im Multiplayer steuert der Server)
 	if button_name == "by_button" and SceneManager.standalone_mode:

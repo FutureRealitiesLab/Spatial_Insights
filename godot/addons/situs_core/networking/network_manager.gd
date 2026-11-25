@@ -332,6 +332,7 @@ func _on_peer_disconnected(id: int) -> void:
 # ── Client-seitige Callbacks ─────────────────────────────────────
 
 func _on_connected_to_server() -> void:
+	SceneManager.deactivate_standalone()
 	client_connected_flag = true
 	reconnect_attempts = 0
 	GameState.my_id = multiplayer.get_unique_id()
