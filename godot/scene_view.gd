@@ -60,6 +60,7 @@ var value_range := Vector2(0.0, 1.0)
 var preset_name: String = "rainbow"
 ## Kugeln als Scheinkugeln (2 Dreiecke) statt als Netz; lokaler Schalter zum Vergleichen.
 var impostors := false
+var _depth_spheres := false   # Scheinkugeln mit eigener Tiefe (wenn Pfeile dargestellt werden)
 ## Feste Farben fuer Partikel und Pfeile (4. Magic-Zeichen 1..9).
 var palette: PackedColorArray = Colormaps.default_palette()
 var _gradient: Gradient   # derselbe Verlauf wie in `lut`, fuer Farbe nach Betrag (Zeichen 0)
@@ -224,6 +225,19 @@ func show_frame(magic: String, info: Dictionary, payload: PackedByteArray) -> vo
 		push_warning("Keine Darstellung fuer Magic %s." % magic)
 		layer.root.queue_free()
 		layers.erase(magic)
+	_update_impostor_depth()
+
+
+## Scheinkugeln schreiben nur dann ihre eigene Tiefe, wenn auch Pfeile da sind (sonst unnoetig
+## teuer).
+func _update_impostor_depth() -> void:
+	var needed := impostors and layers.values().any(func(l: Dictionary) -> bool: return l.has("mm"))
+	if needed == _depth_spheres:
+		return
+	_depth_spheres = needed
+	for layer: Dictionary in layers.values():
+		if layer.has("spheres"):
+			_apply_sphere_style(layer)
 
 
 func set_show_boxes(value: bool) -> void:
@@ -635,7 +649,7 @@ func _apply_sphere_style(layer: Dictionary) -> void:
 	multi.mesh = layer.quad if impostors else layer.ball
 	if impostors:
 		var mat := ShaderMaterial.new()
-		mat.shader = _shader("impostor_sphere")
+		mat.shader = _shader("impostor_sphere_depth" if _depth_spheres else "impostor_sphere")
 		node.material_override = mat
 		node.extra_cull_margin = 1.0
 	else:
@@ -644,6 +658,7 @@ func _apply_sphere_style(layer: Dictionary) -> void:
 
 func set_impostors(value: bool) -> void:
 	impostors = value
+	_depth_spheres = value and layers.values().any(func(l: Dictionary) -> bool: return l.has("mm"))
 	for layer: Dictionary in layers.values():
 		if layer.has("spheres"):
 			_apply_sphere_style(layer)

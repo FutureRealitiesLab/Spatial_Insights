@@ -276,5 +276,7 @@ func _test_colors_and_impostors(view: Node) -> void:
 	view.set_impostors(true)
 	var layer: Dictionary = view.layers["P2p0"]
 	_check((layer.spheres as MultiMesh).mesh is QuadMesh, "impostor mesh")
+	# Mit Pfeilen in der Szene schreiben die Scheinkugeln eigene Tiefe.
+	_check(view._depth_spheres == view.layers.values().any(func(l: Dictionary) -> bool: return l.has("mm")), "impostor depth")
 	view.set_impostors(false)
 	_check((layer.spheres as MultiMesh).mesh is SphereMesh, "sphere mesh again")
