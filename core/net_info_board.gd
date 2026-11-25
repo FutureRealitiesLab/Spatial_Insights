@@ -40,7 +40,10 @@ func _update() -> void:
 	var attempts: int = NetworkManager.reconnect_attempts
 	var lines: PackedStringArray = []
 	lines.append("No connection")
-	lines.append("%s : %d" % [NetworkManager.server_ip, NetworkManager.PORT])
+	if NetworkManager.searching:
+		lines.append("Searching for server ...")
+	else:
+		lines.append("%s : %d" % [NetworkManager.server_ip, NetworkManager.PORT])
 	if attempts > 0:
 		lines.append("Attempt %d ..." % attempts)
 	else:

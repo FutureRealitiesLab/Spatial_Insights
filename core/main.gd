@@ -42,6 +42,8 @@ var _diag_timer: float = 0.0
 ## Server-HUD (oben rechts): Port und Adressen als feste Zeilen, darunter die Client-Liste.
 var _hud_base_lines: PackedStringArray = []
 var _hud_timer: float = 0.0
+## true sobald jemand das IP-Feld im Menü selbst bearbeitet hat
+var _ip_edited: bool = false
 
 
 func _ready() -> void:
@@ -77,17 +79,34 @@ func _ready() -> void:
 		get_viewport().vrs_mode = Viewport.VRS_DISABLED
 		$Menu.visible = true
 		$Menu/Center/VBox/IpEdit.text = _load_saved_ip()
-		$Menu/Center/VBox/IpEdit.text_changed.connect(_update_connect_label)
+		$Menu/Center/VBox/IpEdit.text_changed.connect(_on_ip_edited)
 		_update_connect_label()
+		if SitusSettings.get_discovery():
+			NetworkManager.server_found.connect(_on_server_found)
+			NetworkManager.search_servers()
 		call_deferred("_handle_cmdline")
 
 
+## Tippt jemand selbst eine IP ein, überschreibt die Suche das Feld nicht mehr.
+func _on_ip_edited(_text: String) -> void:
+	_ip_edited = true
+	_update_connect_label()
+
+
+## Im LAN gefundenen Server ins IP-Feld übernehmen, außer die dort stehende IP antwortet selbst.
+func _on_server_found(ip: String) -> void:
+	if not _ip_edited and not NetworkManager.found_servers().has($Menu/Center/VBox/IpEdit.text):
+		$Menu/Center/VBox/IpEdit.text = ip
+	_update_connect_label()
+
+
 ## Beschriftung des Verbinden-Buttons zeigt die eingetragene Server-IP.
-func _update_connect_label(_text: String = "") -> void:
+func _update_connect_label() -> void:
 	var ip: String = $Menu/Center/VBox/IpEdit.text.strip_edges()
 	if ip.is_empty():
 		ip = NetworkManager.server_ip
-	$Menu/Center/VBox/BtnFPS.text = "Client connecting to %s" % ip
+	var found := " (found on LAN)" if NetworkManager.found_servers().has(ip) else ""
+	$Menu/Center/VBox/BtnFPS.text = "Client connecting to %s%s" % [ip, found]
 
 
 func _launch() -> void:
