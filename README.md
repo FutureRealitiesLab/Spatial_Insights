@@ -131,6 +131,8 @@ MATLAB --UDP 4242--> Server (godot, "Als Server starten")
 
 Wann `sim/udp_on_clients = true`? Für **eine einzelne Brille ohne Server**: MATLAB sendet direkt an die IP der Brille (`udpOpen(address="<IP der Brille>")`), und die Brille zeigt die Daten allein an. Bei mehreren Brillen bleibt es `false`: MATLAB sendet an den Server, der Datenkanal verteilt weiter. Mit `true` werden Frames auf den Clients nicht mehr vom Server geholt, und mehrere Absender auf demselben Port sind nicht vorgesehen.
 
+**Direktmodus ohne Neuexport:** Findet eine Brille keinen Server, startet der Trigger den Direktmodus. Sie empfängt dann selbst per UDP (Port 4242), und solange keine Daten kommen, steht ihre IP im Raum. MATLAB sendet an diese Adresse (`udpOpen(address="<IP der Brille>")`). Verbindet sich später ein Server, wechselt die Brille zurück.
+
 Beispiel in `project.godot`:
 
 ```ini

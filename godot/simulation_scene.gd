@@ -20,18 +20,52 @@ var _freeze_labels: Array[Label3D] = []
 var _freeze_button: Button
 var _boxes_button: Button
 var _colormap_button: Button
+var _direct_label: Label3D
+var _last_frame_ms: int = -DIRECT_HINT_AFTER_MS
+
+## Im Direktmodus erscheint der Hinweis mit der IP, wenn so lange kein Frame kam.
+const DIRECT_HINT_AFTER_MS := 3000
 
 
 func _ready() -> void:
 	super()
 	SimulationRelay.attach()
+	SimulationRelay.frame_received.connect(
+			func(_m: String, _i: Dictionary, _p: PackedByteArray) -> void: _last_frame_ms = Time.get_ticks_msec())
 	SimulationRelay.replay()
+	_build_direct_hint()
 	_build_freeze_ui()
 	SimulationRelay.frozen_changed.connect(_on_frozen_changed)
 	_on_frozen_changed(SimulationRelay.frozen)
 	SimulationRelay.view_setting_changed.connect(_on_view_setting_changed)
 	for key: String in SimulationRelay.view_settings:
 		_on_view_setting_changed(key, SimulationRelay.view_settings[key])
+
+
+## Direktmodus (MATLAB sendet an dieses Geraet): schwebender Hinweis mit eigener IP und Port,
+## solange kein Datenstrom ankommt.
+func _build_direct_hint() -> void:
+	_direct_label = Label3D.new()
+	_direct_label.font_size = 64
+	_direct_label.pixel_size = 0.0015
+	_direct_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_direct_label.outline_modulate = Color(0, 0, 0)
+	_direct_label.position = Vector3(0.0, 1.5, 0.0)
+	_direct_label.visible = false
+	add_child(_direct_label)
+
+
+func _process(_delta: float) -> void:
+	var waiting: bool = SimulationRelay.role == SimulationRelay.Role.DIRECT \
+			and Time.get_ticks_msec() - _last_frame_ms > DIRECT_HINT_AFTER_MS
+	if waiting and not _direct_label.visible:
+		var ips: PackedStringArray = []
+		for addr: String in IP.get_local_addresses():
+			if "." in addr and not addr.begins_with("127.") and not addr.begins_with("169.254."):
+				ips.append(addr)
+		_direct_label.text = "Direct mode: waiting for data\nIn MATLAB: udpOpen(address=\"%s\", port=%d)" % [
+				" / ".join(ips) if not ips.is_empty() else "no network", SimulationRelay.port]
+	_direct_label.visible = waiting
 
 
 ## Taste F (Server und Direkt-Instanz) haelt die Simulation fuer alle an, Taste B blendet die

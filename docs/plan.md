@@ -117,6 +117,11 @@ Reihenfolge = empfohlene Abarbeitung. Kästchen abhaken, wenn erledigt.
 
 - [ ] **PC-Versionen testen** (`docs/plan_pc_versionen.md`): Windows-Export `PC`, Menü, Einzelspieler (Server minimiert, Beenden schließt ihn, MATLAB an 127.0.0.1), PC-Client mit IP-Feld, Sprung auf Leertaste, Freeze auf F, PC-Client und Brille sehen sich. Alles umgesetzt, nichts getestet.
 
+### 0a. Sprung freischaltbar (2026-11-25)
+
+- [ ] Toggle: Der Boost-Sprung ist erst im Spiel aktivierbar (Details folgen, Pablo).
+- [ ] Direktmodus auf der Brille testen: Trigger ohne Server, IP-Hinweis, MATLAB an die Brillen-IP.
+
 ### 0b. Plan nächste Session: Datenverteilung (Stand 2026-11-11)
 
 **Befund aus dem Test mit 7 Brillen (GoL):** Bewegung und Rendering laufen flüssig, aber die Simulation ruckelt, weil zu wenige Frames ankommen. Paketverlust (ENet-Wert im Server-Fenster) teilweise über 12 %. Der Server hing dabei selbst per WLAN am Router, jedes Frame lief also zweimal durch die Luft. **Wichtig ist Geschwindigkeit, nicht Vollständigkeit:** Verlorene Frames sind egal, langsame Übertragung ist das Problem.

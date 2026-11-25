@@ -83,14 +83,39 @@ func attach() -> void:
 	if GameState.mode == GameState.Mode.SERVER and not solo:
 		role = Role.SERVER
 		_start_udp()
-		# Jeder neue (oder wiederverbundene) Client erfährt den aktuellen Freeze-Zustand.
-		multiplayer.peer_connected.connect(func(id: int) -> void: _rpc_frozen.rpc_id(id, frozen))
+		# Jeder neue (oder wiederverbundene) Client erfährt Freeze-Zustand und Ansicht.
+		multiplayer.peer_connected.connect(func(id: int) -> void:
+			_rpc_frozen.rpc_id(id, frozen)
+			_rpc_view_settings.rpc_id(id, view_settings))
 	elif direct:
 		role = Role.DIRECT
 		_start_udp()
 	else:
 		role = Role.CLIENT
 		DataChannel.received.connect(_on_channel_received)
+		# Ohne Server schaltet der Standalone-Modus auf direkten MATLAB-Empfang um.
+		SceneManager.standalone_changed.connect(_set_direct)
+		if SceneManager.standalone_mode:
+			_set_direct(true)
+	role_name = Role.keys()[role]
+	print("[SimulationRelay] Rolle: ", role_name)
+
+
+## Client ohne Server: true = selbst per UDP von MATLAB empfangen, false = wieder Datenkanal.
+func _set_direct(active: bool) -> void:
+	if active and role == Role.CLIENT:
+		role = Role.DIRECT
+		DataChannel.received.disconnect(_on_channel_received)
+		_start_udp()
+	elif not active and role == Role.DIRECT and _receiver != null:
+		role = Role.CLIENT
+		_receiver.queue_free()
+		_receiver = null
+		frozen = false
+		frozen_changed.emit(frozen)
+		DataChannel.received.connect(_on_channel_received)
+	else:
+		return
 	role_name = Role.keys()[role]
 	print("[SimulationRelay] Rolle: ", role_name)
 
