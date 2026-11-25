@@ -264,6 +264,14 @@ func _test_colors_and_impostors(view: Node) -> void:
 	var ranges: Array = view.scalar_ranges()
 	_check(not ranges.is_empty() and ranges[0].low >= ranges[0].vmin and ranges[0].high <= ranges[0].vmax, "scalar ranges")
 	panel._update_info()
+	# Farbe 0 folgt dem Verlauf, 1..9 den festen Farben, auch ohne neue Daten.
+	var flat := {"offsets": PackedFloat32Array([0.0, 1.0]), "colors": PackedColorArray([Color(0, 1, 0), Color(0, 1, 0)])}
+	view.set_gradient(flat)
+	_check(view.layers["P2p0"].colors[0].is_equal_approx(Color(0, 1, 0)), "speed color from gradient %s" % view.layers["P2p0"].colors[0])
+	var fixed: PackedColorArray = colormaps.default_palette()
+	fixed[0] = Color(1, 0, 1)
+	view.set_palette(fixed)
+	_check(view.layers["P2p1"].colors[0].is_equal_approx(Color(1, 0, 1)), "fixed color 1 %s" % view.layers["P2p1"].colors[0])
 	panel.queue_free()
 	view.set_impostors(true)
 	var layer: Dictionary = view.layers["P2p0"]

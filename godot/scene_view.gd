@@ -13,8 +13,8 @@ extends Node3D
 ## S/C 3s<n>  Schnitte, n: 0 drei Mittelschnitte, 1..9 n xy-Schnitte
 ## S/C 3v<a>  Volumen (Raymarching), a: 0 Standard, 1..9 Deckkraft 0.1..0.9
 ## V 2p/3p<k> Gitterpunkte um den Vektor verschoben (k=1 autoskaliert)
-## V 2q/3q<c> Pfeile mit exakter Laenge (c: 0 Farbe nach Betrag, 1..9 feste Farbe)
-## P 2p/3p<c> Partikel (c: 0 Farbe nach Geschwindigkeit, 1..9 feste Farbe)
+## V 2q/3q<c> Pfeile mit exakter Laenge (c: 0 Farbe nach Betrag aus dem Verlauf, 1..9 feste Farbe)
+## P 2p/3p<c> Partikel (c: 0 Farbe nach Geschwindigkeit aus dem Verlauf, 1..9 feste Farbe)
 ## P 2q/3q<c> Partikelvektoren (auch Strassen), wie V q
 ##
 ## Koordinaten wie in MATLAB (x, y, z); die Node `Plot` dreht sie so, dass z in
@@ -41,12 +41,6 @@ const BoxOutline := preload("res://box_outline.gd")
 @export var handle_keys: bool = true
 
 const Colormaps := preload("res://colormaps.gd")
-## MATLAB lines(9): die ersten sieben Farben, danach wiederholt.
-const SPECIES_COLORS := [
-	Color(0.0, 0.447, 0.741), Color(0.85, 0.325, 0.098), Color(0.929, 0.694, 0.125),
-	Color(0.494, 0.184, 0.556), Color(0.466, 0.674, 0.188), Color(0.301, 0.745, 0.933),
-	Color(0.635, 0.078, 0.184),
-]
 const VECTOR_POINT_COLOR := Color(0.12, 0.4, 0.8)
 const MAX_SURFACE_SEGMENTS := 255
 const PACKED_TEX_WIDTH := 2048
@@ -66,6 +60,9 @@ var value_range := Vector2(0.0, 1.0)
 var preset_name: String = "rainbow"
 ## Kugeln als Scheinkugeln (2 Dreiecke) statt als Netz; lokaler Schalter zum Vergleichen.
 var impostors := false
+## Feste Farben fuer Partikel und Pfeile (4. Magic-Zeichen 1..9).
+var palette: PackedColorArray = Colormaps.default_palette()
+var _gradient: Gradient   # derselbe Verlauf wie in `lut`, fuer Farbe nach Betrag (Zeichen 0)
 
 
 func _ready() -> void:
@@ -94,6 +91,28 @@ func set_gradient(gradient: Dictionary) -> void:
 		lut = ImageTexture.create_from_image(img)
 	else:
 		lut.update(img)
+	_gradient = Colormaps.make_gradient(gradient)
+	_recolor()
+
+
+## Feste Farben 1..9 fuer alle Ebenen.
+func set_palette(colors: PackedColorArray) -> void:
+	palette = colors
+	_recolor()
+
+
+## Partikel und Pfeile neu faerben, auch ohne neue Daten (z. B. waehrend Freeze).
+func _recolor() -> void:
+	for layer: Dictionary in layers.values():
+		if not layer.has("color_k"):
+			continue
+		var colors := _item_colors(layer.speeds, layer.color_k, (layer.points as PackedVector3Array).size())
+		var multi: MultiMesh = layer.spheres if layer.has("spheres") else layer.get("mm")
+		if multi == null:
+			continue
+		layer.colors = colors
+		for i in mini(colors.size(), multi.instance_count):
+			multi.set_instance_color(i, colors[i])
 
 
 ## Ausschnitt des Wertebereichs (0..1), der auf den Verlauf abgebildet wird.
@@ -102,6 +121,7 @@ func set_value_range(range_01: Vector2) -> void:
 	for layer: Dictionary in layers.values():
 		for mat: ShaderMaterial in layer.mats:
 			mat.set_shader_parameter("value_range", value_range)
+	_recolor()
 
 
 func _apply_colors(mat: ShaderMaterial) -> void:
@@ -519,7 +539,8 @@ func _vectors(layer: Dictionary, rebuild: bool, magic: String, info: Dictionary,
 			colors.append(VECTOR_POINT_COLOR)
 		_set_points(layer, rebuild, positions, colors, 0.5 * particle_radius)
 	else:
-		_set_arrow_layer(layer, rebuild, positions, vectors, _arrow_colors(speeds, k))
+		_remember_colors(layer, speeds, k)
+		_set_arrow_layer(layer, rebuild, positions, vectors, _item_colors(speeds, k, positions.size()))
 	return true
 
 
@@ -560,17 +581,12 @@ func _particles(layer: Dictionary, rebuild: bool, magic: String, info: Dictionar
 			speeds.append(raw.length())
 			vectors.append(raw)
 
+	_remember_colors(layer, speeds, k)
+	var colors := _item_colors(speeds, k, n)
 	if vis == "p":
-		var colors: PackedColorArray
-		if k == 0 and has_vel:
-			colors = _speed_colors(speeds)
-		else:
-			colors = PackedColorArray()
-			colors.resize(n)
-			colors.fill(_palette(k))
 		_set_points(layer, rebuild, positions, colors, particle_radius)
 	else:
-		_set_arrow_layer(layer, rebuild, positions, vectors, _arrow_colors(speeds, k))
+		_set_arrow_layer(layer, rebuild, positions, vectors, colors)
 	return true
 
 
@@ -667,28 +683,28 @@ func _set_arrow_layer(layer: Dictionary, rebuild: bool, positions: PackedVector3
 	_set_arrows(layer.mm, positions, vectors, arrow_lengths, colors)
 
 
-## Farbe nach Betrag (c=0, Skala bis max(1, groesster Betrag)) oder feste Farbe (c=1..9).
-func _arrow_colors(speeds: PackedFloat32Array, k: int) -> PackedColorArray:
-	if k == 0:
-		return _speed_colors(speeds)
+func _remember_colors(layer: Dictionary, speeds: PackedFloat32Array, k: int) -> void:
+	layer.color_k = k
+	layer.speeds = speeds if k == 0 else PackedFloat32Array()
+
+
+## Farbe nach Betrag (c=0 mit Werten: Verlauf aus dem Farbmenue, Skala bis max(1, groesster
+## Betrag), Wertebereich wie bei den Feldern) oder feste Farbe (c=1..9, ohne Werte Farbe 1).
+func _item_colors(speeds: PackedFloat32Array, k: int, count: int) -> PackedColorArray:
 	var colors := PackedColorArray()
-	colors.resize(speeds.size())
-	colors.fill(_palette(k))
-	return colors
-
-
-func _speed_colors(speeds: PackedFloat32Array) -> PackedColorArray:
+	if k != 0 or speeds.size() != count:
+		colors.resize(count)
+		colors.fill(palette[(maxi(1, k) - 1) % palette.size()])
+		return colors
 	var limit := 1.0
 	for s in speeds:
 		limit = maxf(limit, s)
-	var colors := PackedColorArray()
+	var width := maxf(value_range.y - value_range.x, 0.0001)
 	for s in speeds:
-		colors.append(_turbo(s / limit))
+		var color := _gradient.sample(clampf((s / limit - value_range.x) / width, 0.0, 1.0))
+		color.a = 1.0   # Partikel und Pfeile sind deckend
+		colors.append(color)
 	return colors
-
-
-func _palette(k: int) -> Color:
-	return SPECIES_COLORS[(maxi(1, k) - 1) % SPECIES_COLORS.size()]
 
 
 func _arrow_instances(root: Node3D, count: int, color := Color.WHITE) -> MultiMesh:
@@ -767,15 +783,6 @@ func _make_arrow_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
-
-
-## Polynomnaeherung der Turbo-Farbskala (wie MATLAB turbo).
-func _turbo(t: float) -> Color:
-	t = clampf(t, 0.0, 1.0)
-	var r := 0.13572138 + t * (4.61539260 + t * (-42.66032258 + t * (132.13108234 + t * (-152.94239396 + t * 59.28637943))))
-	var g := 0.09140261 + t * (2.19418839 + t * (4.84296658 + t * (-14.18503333 + t * (4.27729857 + t * 2.82956604))))
-	var b := 0.10667330 + t * (12.64194608 + t * (-60.58204836 + t * (110.36276771 + t * (-89.90310912 + t * 27.34824973))))
-	return Color(clampf(r, 0.0, 1.0), clampf(g, 0.0, 1.0), clampf(b, 0.0, 1.0))
 
 
 # ---- Hilfen ---------------------------------------------------------------------

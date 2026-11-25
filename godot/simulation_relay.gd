@@ -39,7 +39,8 @@ var frozen: bool = false
 ## Neue Schluessel hier eintragen, z. B. spaeter Farbskala; scene_view/Szene reagieren auf
 ## view_setting_changed. Clients uebernehmen den Stand des Servers, auch beim Late Join.
 var view_settings: Dictionary = {"show_boxes": true, "preset": "rainbow",
-		"gradient": Colormaps.preset("rainbow"), "range": Vector2(0.0, 1.0)}
+		"gradient": Colormaps.preset("rainbow"), "range": Vector2(0.0, 1.0),
+		"palette": Colormaps.default_palette()}
 
 # Statistik wie udp_receiver.gd (vom Debug-Overlay gelesen)
 var port: int = 4242

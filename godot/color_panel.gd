@@ -6,6 +6,7 @@ extends PanelContainer
 signal preset_chosen(name: String)
 signal gradient_edited(gradient: Dictionary)
 signal range_edited(range_01: Vector2)
+signal palette_edited(colors: PackedColorArray)
 
 const Colormaps := preload("res://colormaps.gd")
 
@@ -18,6 +19,7 @@ var _add: Button
 var _min: HSlider
 var _max: HSlider
 var _info: Label
+var _fixed: Array[ColorPickerButton] = []   # feste Farben 1..9
 
 
 func _ready() -> void:
@@ -57,6 +59,32 @@ func _ready() -> void:
 	_info.add_theme_font_size_override("font_size", 12)
 	box.add_child(_info)
 
+	box.add_child(HSeparator.new())
+	var title := Label.new()
+	title.text = "Fixed colors (magic digit 1..9)"
+	title.add_theme_font_size_override("font_size", 12)
+	box.add_child(title)
+	var grid := GridContainer.new()
+	grid.columns = 5
+	for i in 9:
+		var cell := HBoxContainer.new()
+		var digit := Label.new()
+		digit.text = str(i + 1)
+		cell.add_child(digit)
+		var picker := ColorPickerButton.new()
+		picker.edit_alpha = false
+		picker.focus_mode = Control.FOCUS_NONE
+		picker.custom_minimum_size = Vector2(42.0, 26.0)
+		picker.color_changed.connect(func(_c: Color) -> void: _emit_palette())
+		cell.add_child(picker)
+		grid.add_child(cell)
+		_fixed.append(picker)
+	grid.add_child(_button("reset", func() -> void:
+		show_palette(Colormaps.default_palette())
+		_emit_palette()))
+	box.add_child(grid)
+	show_palette(view.palette)
+
 	var timer := Timer.new()
 	timer.wait_time = 1.0
 	timer.autostart = true
@@ -74,6 +102,19 @@ func show_gradient(gradient: Dictionary, preset: String) -> void:
 	for i in (gradient.offsets as PackedFloat32Array).size():
 		_add_row(gradient.colors[i], gradient.offsets[i])
 	_update_buttons()
+
+
+## Zeigt die festen Farben an, ohne Signale auszuloesen.
+func show_palette(colors: PackedColorArray) -> void:
+	for i in mini(colors.size(), _fixed.size()):
+		_fixed[i].color = colors[i]
+
+
+func _emit_palette() -> void:
+	var colors := PackedColorArray()
+	for picker in _fixed:
+		colors.append(picker.color)
+	palette_edited.emit(colors)
 
 
 func show_range(range_01: Vector2) -> void:

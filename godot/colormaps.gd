@@ -24,11 +24,29 @@ static func preset(name: String) -> Dictionary:
 	return {"offsets": offsets, "colors": colors}
 
 
-## 256 x 1 Pixel, RGBA: Farbe und Deckkraft entlang des Verlaufs.
-static func make_image(gradient: Dictionary) -> Image:
+## Feste Farben fuer das 4. Magic-Zeichen 1..9 (Partikel und Pfeile): MATLAB lines(9).
+static func default_palette() -> PackedColorArray:
+	var lines := [
+		Color(0.0, 0.447, 0.741), Color(0.85, 0.325, 0.098), Color(0.929, 0.694, 0.125),
+		Color(0.494, 0.184, 0.556), Color(0.466, 0.674, 0.188), Color(0.301, 0.745, 0.933),
+		Color(0.635, 0.078, 0.184),
+	]
+	var palette := PackedColorArray()
+	for i in 9:
+		palette.append(lines[i % lines.size()])
+	return palette
+
+
+static func make_gradient(gradient: Dictionary) -> Gradient:
 	var g := Gradient.new()
 	g.offsets = gradient.offsets
 	g.colors = gradient.colors
+	return g
+
+
+## 256 x 1 Pixel, RGBA: Farbe und Deckkraft entlang des Verlaufs.
+static func make_image(gradient: Dictionary) -> Image:
+	var g := make_gradient(gradient)
 	var img := Image.create_empty(256, 1, false, Image.FORMAT_RGBA8)
 	for i in 256:
 		img.set_pixel(i, 0, g.sample(i / 255.0))

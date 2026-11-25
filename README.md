@@ -72,8 +72,8 @@ Zwei Rechner: `address` auf die IPv4-Adresse des Godot-Rechners setzen und dort 
 | `S3s<n>` / `C3s<n>` | `n` xy-Schnitte (`0`: drei Mittelschnitte) | `[ny nx nz]` |
 | `S3v<a>` / `C3v<a>` | Volumen (Raymarching), `a`: 0 Standard, 1..9 Deckkraft 0,1..0,9 | `[ny nx nz]` |
 | `V2p<k>` / `V3p<k>` | Gitterpunkte, um den Vektor verschoben (`k`=1 autoskaliert, 0 Originallänge) | `[ny nx 1 2]` / `[ny nx nz 3]` |
-| `V2q<c>` / `V3q<c>` | Pfeile mit exakter Länge (`c`=0 Farbe nach Betrag, 1..9 feste Farbe) | wie `V2p` |
-| `P2p<c>` / `P3p<c>` | Partikel (`c`=0 Farbe nach Geschwindigkeit, 1..9 feste Farbe) | `[N nd]` oder `[N 2*nd]` mit Geschwindigkeit |
+| `V2q<c>` / `V3q<c>` | Pfeile mit exakter Länge (`c`=0 Farbe nach Betrag aus dem Verlauf, 1..9 feste Farbe, beides im Farbmenü änderbar) | wie `V2p` |
+| `P2p<c>` / `P3p<c>` | Partikel (`c`=0 Farbe nach Geschwindigkeit aus dem Verlauf, 1..9 feste Farbe) | `[N nd]` oder `[N 2*nd]` mit Geschwindigkeit |
 | `P2q<c>` / `P3q<c>` | Partikelvektoren (auch Straßen), Verschiebung in den Einheiten der Box | `[N 2*nd]` |
 | `T...` | reserviert (Verkehr) | nicht umgesetzt |
 
@@ -101,7 +101,7 @@ Jedes Datagramm beginnt mit 44 Byte (little-endian): Magic (4 Byte ASCII), Sessi
 | Mausrad | Zoom |
 | `C` | Colormap wechseln (rainbow, hot, gray, viridis) |
 | `F3` | Overlay ein-/ausblenden (Pakete/s, Frames/s, Frame-Größe, Verworfen, Session, Magic, Ebenen) |
-| `M` | Server: Farbmenü (Verlauf mit 2 bis 5 Farbpunkten samt Deckkraft, Vorlagen, Wertebereich), gilt für alle Clients |
+| `M` | Server: Farbmenü (Verlauf mit 2 bis 5 Farbpunkten samt Deckkraft, Vorlagen, Wertebereich, feste Farben 1..9), gilt für alle Clients |
 | A/X antippen | Brille: zwischen Kugelnetz und Scheinkugeln wechseln (nur lokal). A/X lange halten: neue Spielerfarbe |
 
 Port und Bind-Adresse stehen an der Node `Receiver` (`port`, `bind_address`, `recv_buffer_size`). Es ist IPv4 gebunden (`0.0.0.0`).

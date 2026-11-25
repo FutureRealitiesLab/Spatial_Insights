@@ -166,6 +166,10 @@ func _on_view_setting_changed(key: String, value: Variant) -> void:
 				_boxes_button.set_pressed_no_signal(bool(value))
 		"gradient":
 			$Plot/View.set_gradient(value)
+		"palette":
+			$Plot/View.set_palette(value)
+			if _color_panel != null:
+				_color_panel.show_palette(value)
 		"range":
 			$Plot/View.set_value_range(value)
 			if _color_panel != null:
@@ -207,6 +211,9 @@ func _build_color_panel() -> void:
 		SimulationRelay.set_view_setting("gradient", gradient))
 	_color_panel.range_edited.connect(func(range_01: Vector2) -> void:
 		SimulationRelay.set_view_setting("range", range_01))
+	_color_panel.palette_edited.connect(func(colors: PackedColorArray) -> void:
+		SimulationRelay.set_view_setting("palette", colors))
+	_color_panel.show_palette(SimulationRelay.view_settings.get("palette", Colormaps.default_palette()))
 	var preset: String = SimulationRelay.view_settings.get("preset", "rainbow")
 	_color_panel.show_gradient(SimulationRelay.view_settings.get("gradient", Colormaps.preset(preset)), preset)
 	_color_panel.show_range(SimulationRelay.view_settings.get("range", Vector2(0.0, 1.0)))
